@@ -1,0 +1,32 @@
+__pycache__/
+*.py[cod]
+.venv/
+.idea/
+.vscode/
+.DS_Store
+
+# Runtime and transactional state
+**/.runner.lock
+**/.regional-build-*/
+**/.outputs.backup/
+.*.data.backup/
+
+# Regional data are deliberately kept outside the public repository.
+regions/*/data
+regions/*/sources/*
+!regions/*/sources/README.md
+regions/*/pipeline/cache/
+regions/*/pipeline/outputs/
+regions/*/pipeline/inputs.lock.json
+regions/*/pipeline/build_manifest.json
+regions/*/build_manifest.json
+regions/*/.runtime/
+
+# Large geodata must be downloaded or mounted, never committed by accident.
+*.osm.pbf
+*.pbf
+*.gpkg
+*.fgb
+*.mbtiles
+*.tif
+*.tiff

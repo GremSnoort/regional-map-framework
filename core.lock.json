@@ -1,0 +1,96 @@
+{
+  "schema_version": 1,
+  "core_version": "2.1.0",
+  "files": {
+    "index.html": {
+      "path": "index.html",
+      "bytes": 805,
+      "sha256": "8f85d26d3cde143fc53e314b24839531d1410cd69f2a7bf3f8aa27e7ac212f4f"
+    },
+    "manage.py": {
+      "path": "manage.py",
+      "bytes": 31580,
+      "sha256": "270d95b8b647fe997c8a53fe3704fd1f8c211dfe23ed84b32918e698e6cdeef6"
+    },
+    "REGION_CONTRACT.md": {
+      "path": "REGION_CONTRACT.md",
+      "bytes": 6007,
+      "sha256": "6891799731759ea60ee46940190e761d2200ae28f4061a10209be50ae8dc2108"
+    },
+    "core/map.js": {
+      "path": "core/map.js",
+      "bytes": 14281,
+      "sha256": "f22617a898794eb9d3e6ed7f606ced65ad2f54c77da5b0dd2290edc001a1683f"
+    },
+    "core/map.css": {
+      "path": "core/map.css",
+      "bytes": 3458,
+      "sha256": "41df214cf578dc16e25aca8d9944685973e2d3a9aa2c2ebe34da9060f2e021bc"
+    },
+    "pipeline_core/runner.py": {
+      "path": "pipeline_core/runner.py",
+      "bytes": 15839,
+      "sha256": "a87b28c5ce12bf37ea3a3d6426005887eacabfff1e4721509a85c09c1ca4ae35"
+    },
+    "pipeline_core/build_roads.py": {
+      "path": "pipeline_core/build_roads.py",
+      "bytes": 4285,
+      "sha256": "9ba02443e32a20ada093e94b81e9e3a8aa1fab8ac0cb8335298cca040c787bbe"
+    },
+    "pipeline_core/normalize_layer.py": {
+      "path": "pipeline_core/normalize_layer.py",
+      "bytes": 4949,
+      "sha256": "20480cce5f9bfd9aa68db1409fc50909a529d64db5225c90ee5535d62087c80d"
+    },
+    "pipeline_core/requirements-lock.txt": {
+      "path": "pipeline_core/requirements-lock.txt",
+      "bytes": 188,
+      "sha256": "c5c0eb7d0525e3daeaa7ae24f544312db385d4b01c537b818abc837ce0f5e72a"
+    },
+    "pipeline_core/requirements-minimal-lock.txt": {
+      "path": "pipeline_core/requirements-minimal-lock.txt",
+      "bytes": 169,
+      "sha256": "5e57c3ff453c20ca8c860b9d62cb47fc9d647ecd4c59503e14bf58033c5e47c8"
+    },
+    "pipeline_core/selftest.py": {
+      "path": "pipeline_core/selftest.py",
+      "bytes": 5978,
+      "sha256": "4f59cde4de4d24b2555d1c352524afe01aeb3d8406adcbfc730530c0b21d840c"
+    },
+    "schemas/region.schema.json": {
+      "path": "schemas/region.schema.json",
+      "bytes": 3046,
+      "sha256": "edefaddc08d1823ff88977ccb76989d394f9f86f04beb8c227b8d9a9b3d58812"
+    },
+    "schemas/pipeline.schema.json": {
+      "path": "schemas/pipeline.schema.json",
+      "bytes": 1215,
+      "sha256": "6a6d388c40743daa9cfed7a3c0aa3901d8f370676d1ce426c61aed725cecb306"
+    },
+    "schemas/analytics-plugin.schema.json": {
+      "path": "schemas/analytics-plugin.schema.json",
+      "bytes": 851,
+      "sha256": "7fe3904e8703eb1894509826ab78920107c412881b1c70fbb1c958c91d94f5e9"
+    },
+    "templates/layer.example.json": {
+      "path": "templates/layer.example.json",
+      "bytes": 1322,
+      "sha256": "0912c8d4b588babe38bd2cbd0580456f4d39fe3d6a6f8ee394c06749b5bb72bb"
+    },
+    "templates/region.example.json": {
+      "path": "templates/region.example.json",
+      "bytes": 602,
+      "sha256": "d9e38f1c10bed5509727fb661b1b8022e74ca5e2934da1bd44d15ac34a89699b"
+    },
+    "templates/standard_layer.example.json": {
+      "path": "templates/standard_layer.example.json",
+      "bytes": 731,
+      "sha256": "f01d52f6cf9e4ccf7c7b6302985f90e116ea18908ecfb103f39e0cfce82ceec3"
+    },
+    "templates/analytics-plugin.example.json": {
+      "path": "templates/analytics-plugin.example.json",
+      "bytes": 501,
+      "sha256": "ee35cc30774a66babaa5783226ba180915920923527d34938de6b56bd6843a7d"
+    }
+  }
+}

@@ -1,0 +1,36 @@
+{
+  "file": "data/objects.geojson",
+  "label": "Объекты",
+  "renderer": "ranking",
+  "geometry_types": ["Point"],
+  "required_properties": ["name", "object_type", "score"],
+  "numeric_properties": ["score"],
+  "unique_by": ["name", "address"],
+  "required_for_production": false,
+  "default_visible": true,
+  "fit_bounds": false,
+  "title_field": "name",
+  "value_field": "score",
+  "bins": [
+    {"max": 30, "label": "низкий", "color": "#fee2e2"},
+    {"max": 70, "label": "средний", "color": "#fbbf24"},
+    {"max": null, "label": "высокий", "color": "#16a34a"}
+  ],
+  "popup_fields": [
+    {"field": "object_type", "label": "Тип"},
+    {"field": "address", "label": "Адрес"},
+    {"field": "score", "label": "Оценка", "type": "number"},
+    {"field": "source_url", "label": "Источник", "type": "url", "link_label": "открыть"}
+  ],
+  "style": {"radius": 6, "min_radius": 4, "max_radius": 18, "fill_opacity": 0.82},
+  "table": {
+    "enabled": true,
+    "title": "Рейтинг объектов",
+    "sort": [{"field": "score", "direction": "desc"}],
+    "columns": [
+      {"field": "name", "label": "Объект", "bold": true},
+      {"field": "object_type", "label": "Тип"},
+      {"field": "score", "label": "Оценка", "type": "number"}
+    ]
+  }
+}

@@ -1,0 +1,14 @@
+{
+  "schema_version": 2,
+  "core_version": "2.1.0",
+  "region_id": "example",
+  "lifecycle": "draft",
+  "data_mode": "external",
+  "title": "Пример региона",
+  "page_title": "Пример региона — аналитическая карта",
+  "subtitle": "Подключаемые географические, объектные и аналитические слои.",
+  "source_note": "Укажите источники и даты снимков в SOURCES.md.",
+  "view": {"center": [55.75, 37.62], "zoom": 7, "min_zoom": 3, "max_zoom": 19},
+  "layers": {},
+  "expected": {}
+}

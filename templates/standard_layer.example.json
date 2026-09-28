@@ -1,0 +1,16 @@
+{
+  "source": "sources/settlements.csv",
+  "source_type": "csv",
+  "output": "settlements.geojson",
+  "encoding": "utf-8-sig",
+  "delimiter": ",",
+  "latitude_field": "latitude",
+  "longitude_field": "longitude",
+  "geometry_types": ["Point"],
+  "property_map": {"name": "name", "district": "district", "population": "population", "population_quality": "population_quality", "population_as_of": "population_as_of", "population_source_url": "population_source_url"},
+  "constants": {},
+  "numeric_fields": ["population"],
+  "required_fields": ["name", "population", "population_quality"],
+  "deduplicate_by": ["name", "district"],
+  "metadata": {"source": "Replace with an exact source description", "source_as_of": "YYYY-MM-DD"}
+}

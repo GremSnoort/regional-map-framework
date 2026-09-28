@@ -1,0 +1,14 @@
+{
+  "plugin_id": "accessibility_score",
+  "version": "1.0.0",
+  "description": "Example contract for a region-owned analytical model",
+  "inputs": ["sources/objects.geojson", "sources/roads.geojson"],
+  "output": "pipeline/outputs/accessibility.geojson",
+  "methodology": "METHOD_ACCESSIBILITY.md",
+  "parameters": {"distance_metres": 1000, "weight": 1.0},
+  "quality_controls": {
+    "required_properties": ["name", "score"],
+    "numeric_properties": ["score"],
+    "expected_min_features": 1
+  }
+}

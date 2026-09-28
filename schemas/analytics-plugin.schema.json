@@ -1,0 +1,18 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "analytics-plugin.schema.json",
+  "title": "Regional analytical plugin",
+  "type": "object",
+  "required": ["plugin_id", "version", "description", "inputs", "output", "methodology", "parameters", "quality_controls"],
+  "properties": {
+    "plugin_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9_-]*$"},
+    "version": {"type": "string", "pattern": "^[0-9]+\\.[0-9]+\\.[0-9]+$"},
+    "description": {"type": "string", "minLength": 1},
+    "inputs": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string"}},
+    "output": {"type": "string", "pattern": "^pipeline/outputs/"},
+    "methodology": {"type": "string", "minLength": 1},
+    "parameters": {"type": "object"},
+    "quality_controls": {"type": "object"}
+  },
+  "additionalProperties": false
+}

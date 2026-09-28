@@ -1,0 +1,2 @@
+# The shared runner and an empty regional scaffold use only Python's standard library.
+# Add exact region-specific pins when pipeline steps import third-party packages.

@@ -1,0 +1,17 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "pipeline.schema.json",
+  "title": "Declarative regional pipeline",
+  "type": "object",
+  "required": ["schema_version", "region_id", "inputs", "outputs", "steps"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "region_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9_-]*$"},
+    "inputs": {"type": "array", "uniqueItems": true, "items": {"type": "string"}},
+    "outputs": {"type": "array", "uniqueItems": true, "items": {"type": "string", "pattern": "^pipeline/outputs/"}},
+    "steps": {"type": "array", "items": {"type": "object", "required": ["name", "command"], "properties": {"name": {"type": "string", "minLength": 1}, "command": {"type": "array", "minItems": 1, "items": {"type": "string", "minLength": 1}}, "cwd": {"type": "string"}, "env": {"type": "object"}, "inputs": {"type": "array", "items": {"type": "string"}}, "full_only": {"type": "boolean"}}, "additionalProperties": false}},
+    "collect": {"type": "object", "additionalProperties": {"type": "string"}},
+    "lock_file": {"type": "string"}, "manifest_file": {"type": "string"}, "dependency_lock": {"type": "string"}
+  },
+  "additionalProperties": false
+}
