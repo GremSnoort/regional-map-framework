@@ -22,12 +22,13 @@ CORE_VERSION = "2.1.0"
 GEOMETRY_TYPES = {"Point", "MultiPoint", "LineString", "MultiLineString", "Polygon", "MultiPolygon"}
 CORE_FILES = (
     "index.html", "manage.py", "REGION_CONTRACT.md", "core/map.js", "core/map.css",
-    "pipeline_core/runner.py", "pipeline_core/build_roads.py", "pipeline_core/normalize_layer.py",
+    "pipeline_core/runner.py", "pipeline_core/build_roads.py", "pipeline_core/build_adaptive_density.py", "pipeline_core/normalize_layer.py",
     "pipeline_core/requirements-lock.txt", "pipeline_core/requirements-minimal-lock.txt",
     "pipeline_core/selftest.py", "schemas/region.schema.json", "schemas/pipeline.schema.json",
     "schemas/analytics-plugin.schema.json",
     "templates/layer.example.json", "templates/region.example.json",
     "templates/standard_layer.example.json", "templates/analytics-plugin.example.json",
+    "templates/adaptive-density.example.json",
 )
 
 
@@ -156,6 +157,13 @@ def validate_config(config: dict, region_id: str) -> None:
             raise ValueError(f"Layer {layer_id} categories are malformed")
         if not isinstance(spec.get("popup_fields", []), list) or not isinstance(spec.get("table", {}), dict) or not isinstance(spec.get("style", {}), dict):
             raise ValueError(f"Layer {layer_id} display contract is malformed")
+        style = spec.get("style", {})
+        for key in ("fill_max_zoom", "fill_opacity", "fill_opacity_above_max"):
+            if key in style and (not isinstance(style[key], (int, float)) or isinstance(style[key], bool)):
+                raise ValueError(f"Layer {layer_id}: style.{key} must be numeric")
+        for key in ("fill_opacity", "fill_opacity_above_max"):
+            if key in style and not 0 <= style[key] <= 1:
+                raise ValueError(f"Layer {layer_id}: style.{key} must be between 0 and 1")
     if len(files) != len(set(files)):
         raise ValueError("Every layer must use a unique file")
 

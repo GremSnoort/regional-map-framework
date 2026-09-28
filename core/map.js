@@ -30,7 +30,8 @@ const featureTitle=(feature,spec)=>valueAt(feature.properties||{},spec.title_fie
 const featureStyle=(feature,spec,index)=>{
   const properties=feature.properties||{},style=spec.style||{},value=numeric(properties,spec.value_field,NaN),bin=Number.isFinite(value)?binFor(spec,value):null,category=categoryFor(spec,properties),color=category?.color||bin?.color||style.color||palette[index%palette.length];
   if(['LineString','MultiLineString'].includes(feature.geometry?.type))return{color,weight:Number(style.weight??3),opacity:Number(style.opacity??.85),dashArray:style.dash_array||null,lineCap:'round',lineJoin:'round'};
-  return{color:style.stroke||'#374151',weight:Number(style.weight??.7),opacity:Number(style.opacity??.9),fillColor:color,fillOpacity:Number(style.fill_opacity??.55)};
+  const fillVisible=style.fill_max_zoom===undefined||map.getZoom()<=Number(style.fill_max_zoom);
+  return{color:style.stroke||'#374151',weight:Number(style.weight??.7),opacity:Number(style.opacity??.9),fillColor:color,fillOpacity:fillVisible?Number(style.fill_opacity??.55):Number(style.fill_opacity_above_max??0)};
 };
 const pointLayer=(feature,latlng,spec,index)=>{
   const properties=feature.properties||{},style=spec.style||{},value=numeric(properties,spec.value_field,NaN),bin=Number.isFinite(value)?binFor(spec,value):null,category=categoryFor(spec,properties),color=category?.color||bin?.color||style.color||palette[index%palette.length];
@@ -55,7 +56,7 @@ for(let index=0;index<specs.length;index++){
 }
 
 const inZoomRange=state=>(!state.spec.min_zoom||map.getZoom()>=state.spec.min_zoom)&&(!state.spec.max_zoom||map.getZoom()<=state.spec.max_zoom);
-function syncZoomLayers(){for(const state of runtime){const visible=inZoomRange(state);if(visible&&!state.suppressed&&!map.hasLayer(state.layer))state.layer.addTo(map);if(!visible&&map.hasLayer(state.layer))map.removeLayer(state.layer)}}
+function syncZoomLayers(){for(const state of runtime){const visible=inZoomRange(state);if(visible&&!state.suppressed&&!map.hasLayer(state.layer))state.layer.addTo(map);if(!visible&&map.hasLayer(state.layer))map.removeLayer(state.layer);if(visible&&state.layer.setStyle)state.layer.setStyle(feature=>({...featureStyle(feature,state.spec,state.index),pane:`rmf-${state.id}`,renderer:state.layer.options?.renderer}))}}
 map.on('zoomend',syncZoomLayers);
 map.on('overlayremove',event=>{const state=runtime.find(item=>item.layer===event.layer);if(state&&inZoomRange(state))state.suppressed=true});
 map.on('overlayadd',event=>{const state=runtime.find(item=>item.layer===event.layer);if(state){state.suppressed=false;syncZoomLayers()}});

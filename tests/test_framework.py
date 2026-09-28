@@ -7,6 +7,7 @@ from pathlib import Path
 from unittest.mock import patch
 
 import manage
+from pipeline_core.build_adaptive_density import adaptive_rows
 
 
 class FrameworkTest(unittest.TestCase):
@@ -69,8 +70,29 @@ class FrameworkTest(unittest.TestCase):
 
     def test_frontend_has_generic_advanced_renderers(self):
         source = (manage.ROOT / "core" / "map.js").read_text(encoding="utf-8")
-        for contract in ("L.canvas(", "buildTable", "relatedBounds", "syncZoomLayers", "animate:false"):
+        for contract in ("L.canvas(", "buildTable", "relatedBounds", "syncZoomLayers", "fill_max_zoom", "animate:false"):
             self.assertIn(contract, source)
+
+    def test_polygon_fill_zoom_contract(self):
+        config = json.loads((manage.ROOT / "templates" / "region.example.json").read_text(encoding="utf-8"))
+        config["region_id"] = "demo"
+        config["layers"] = {"areas": {"file": "data/areas.geojson", "label": "Areas", "geometry_types": ["Polygon"], "style": {"fill_max_zoom": 9, "fill_opacity": 0.7, "fill_opacity_above_max": 0}}}
+        manage.validate_config(config, "demo")
+        config["layers"]["areas"]["style"]["fill_opacity_above_max"] = 1.5
+        with self.assertRaises(ValueError):
+            manage.validate_config(config, "demo")
+
+    def test_adaptive_density_refines_only_complex_blocks(self):
+        rows = {
+            (0, 0): {"proxy": 1000.0, "buildings": 2, "explicit": 1000.0},
+            (1, 0): {"proxy": 1000.0, "buildings": 2, "explicit": 1000.0},
+            (4, 0): {"proxy": 9000.0, "buildings": 20, "explicit": 9000.0},
+            (5, 0): {"proxy": 9000.0, "buildings": 20, "explicit": 9000.0},
+        }
+        result = adaptive_rows(rows, 100, 400, {"split_buildings": 12, "split_proxy_m2_per_km2": 80000})
+        self.assertIn((0, 0, 4), result)
+        self.assertTrue(any(span < 4 and ix >= 4 for ix, _iy, span in result))
+        self.assertEqual(sum(item["proxy"] for item in result.values()), 20000.0)
 
     def test_bins_must_be_ordered(self):
         config = json.loads((manage.ROOT / "templates" / "region.example.json").read_text(encoding="utf-8"))

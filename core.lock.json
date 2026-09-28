@@ -9,18 +9,18 @@
     },
     "manage.py": {
       "path": "manage.py",
-      "bytes": 31580,
-      "sha256": "270d95b8b647fe997c8a53fe3704fd1f8c211dfe23ed84b32918e698e6cdeef6"
+      "bytes": 32191,
+      "sha256": "4a26bf6a28376528d070255c20332db15d4a4e7c0ab158d981643bf9a867f63c"
     },
     "REGION_CONTRACT.md": {
       "path": "REGION_CONTRACT.md",
-      "bytes": 6007,
-      "sha256": "6891799731759ea60ee46940190e761d2200ae28f4061a10209be50ae8dc2108"
+      "bytes": 7041,
+      "sha256": "ec589ad49015e6ab6703a225d230e41e30982a5002a6e201dca1d048f35dc019"
     },
     "core/map.js": {
       "path": "core/map.js",
-      "bytes": 14281,
-      "sha256": "f22617a898794eb9d3e6ed7f606ced65ad2f54c77da5b0dd2290edc001a1683f"
+      "bytes": 14608,
+      "sha256": "1ec2e0e9745f70411aa5030c37dc19fd7f4688e0df8dd391a0eb77df42374c82"
     },
     "core/map.css": {
       "path": "core/map.css",
@@ -36,6 +36,11 @@
       "path": "pipeline_core/build_roads.py",
       "bytes": 4285,
       "sha256": "9ba02443e32a20ada093e94b81e9e3a8aa1fab8ac0cb8335298cca040c787bbe"
+    },
+    "pipeline_core/build_adaptive_density.py": {
+      "path": "pipeline_core/build_adaptive_density.py",
+      "bytes": 13518,
+      "sha256": "cfc52f6938d3ce14ed7a648061f9224c89887686cf1dfdbfdb3c601d5983df79"
     },
     "pipeline_core/normalize_layer.py": {
       "path": "pipeline_core/normalize_layer.py",
@@ -91,6 +96,11 @@
       "path": "templates/analytics-plugin.example.json",
       "bytes": 501,
       "sha256": "ee35cc30774a66babaa5783226ba180915920923527d34938de6b56bd6843a7d"
+    },
+    "templates/adaptive-density.example.json": {
+      "path": "templates/adaptive-density.example.json",
+      "bytes": 1009,
+      "sha256": "c898728a34e4b1e90f6285e061c662fcb98268e0b975f5ae272e59bacb6abb78"
     }
   }
 }

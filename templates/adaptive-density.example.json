@@ -1,0 +1,25 @@
+{
+  "schema_version": 1,
+  "region_id": "example",
+  "pbf": "sources/region.osm.pbf",
+  "priority_output": "expansion_priority.geojson",
+  "output": "settlement_density.geojson",
+  "osm_snapshot_date": "2026-01-01",
+  "exclude_settlements": [],
+  "include_settlements": [],
+  "protect_configured_boundaries": true,
+  "protect_configured_grid_cells": true,
+  "settlement_boundaries": {},
+  "refinement": {
+    "min_grid_metres": 100,
+    "split_buildings": 12,
+    "split_proxy_m2_per_km2": 80000
+  },
+  "adaptive_rules": [
+    {"minimum_population": 500000, "grid_metres": 400, "min_grid_metres": 100, "radius_km": 20},
+    {"minimum_population": 100000, "grid_metres": 400, "min_grid_metres": 100, "radius_km": 15},
+    {"minimum_population": 25000, "grid_metres": 400, "min_grid_metres": 100, "radius_km": 10},
+    {"minimum_population": 10000, "grid_metres": 200, "min_grid_metres": 100, "radius_km": 7},
+    {"minimum_population": 2500, "grid_metres": 100, "min_grid_metres": 100, "radius_km": 3.5}
+  ]
+}
