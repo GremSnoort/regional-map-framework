@@ -1,0 +1,98 @@
+#!/bin/bash
+set -Eeuo pipefail
+umask 027
+
+readonly repository_url="https://github.com/GremSnoort/regional-map-framework.git"
+readonly application_root="/opt/regional-map-framework"
+readonly releases_root="$application_root/releases"
+readonly current_link="$application_root/current"
+readonly content_root="/srv/regional-map-deployment"
+readonly runtime_root="/var/lib/regional-map-framework/regions"
+readonly service_name="regional-map-framework.service"
+readonly health_url="http://127.0.0.1:8000/healthz"
+
+fail() { echo "DEPLOY ERROR: $*" >&2; exit 1; }
+
+[[ "$EUID" -eq 0 ]] || fail "must run as root"
+[[ "$#" -eq 1 ]] || fail "exactly one commit SHA is required"
+readonly commit_sha="$1"
+[[ "$commit_sha" =~ ^[0-9a-f]{40}$ ]] || fail "invalid commit SHA"
+
+exec 9>/run/lock/regional-map-framework-deploy.lock
+/usr/bin/flock -n 9 || fail "another deployment is running"
+
+/usr/bin/install -d -o root -g root -m 0755 "$application_root" "$releases_root"
+readonly target="$releases_root/$commit_sha"
+stage=""
+cleanup() {
+  if [[ -n "$stage" && -d "$stage" ]]; then
+    /usr/bin/rm -rf -- "$stage"
+  fi
+}
+trap cleanup EXIT
+
+if [[ ! -d "$target" ]]; then
+  stage="$(/usr/bin/mktemp -d "$releases_root/.${commit_sha}.XXXXXXXX")"
+  /usr/bin/git clone --quiet --no-checkout "$repository_url" "$stage"
+  /usr/bin/git -C "$stage" fetch --quiet origin master
+  /usr/bin/git -C "$stage" cat-file -e "${commit_sha}^{commit}" 2>/dev/null || fail "commit is not available from origin"
+  /usr/bin/git -C "$stage" merge-base --is-ancestor "$commit_sha" origin/master || fail "commit is not part of origin/master"
+  /usr/bin/git -C "$stage" checkout --quiet --detach "$commit_sha"
+  [[ "$(/usr/bin/git -C "$stage" rev-parse HEAD)" == "$commit_sha" ]] || fail "checked out commit differs"
+  [[ -z "$(/usr/bin/find "$stage" -path "$stage/.git" -prune -o -type l -print -quit)" ]] || fail "release contains symlinks"
+  /usr/bin/chown -R root:root "$stage"
+  /usr/bin/chmod -R go-w "$stage"
+  /usr/bin/mv "$stage" "$target"
+  stage=""
+fi
+
+[[ "$(/usr/bin/git -C "$target" rev-parse HEAD)" == "$commit_sha" ]] || fail "stored release differs from requested commit"
+[[ -z "$(/usr/bin/find "$target" -path "$target/.git" -prune -o -type l -print -quit)" ]] || fail "stored release contains symlinks"
+/usr/sbin/runuser -u regional-map -- /usr/bin/env PYTHONDONTWRITEBYTECODE=1 \
+  /usr/bin/python3 "$target/manage.py" verify-core
+/usr/sbin/runuser -u regional-map -- /usr/bin/env PYTHONDONTWRITEBYTECODE=1 \
+  /usr/bin/python3 -m unittest discover -s "$target/tests" -t "$target"
+/usr/sbin/runuser -u regional-map -- /usr/bin/env PYTHONDONTWRITEBYTECODE=1 \
+  /usr/bin/python3 "$target/pipeline_core/selftest.py"
+/usr/sbin/runuser -u regional-map -- /usr/bin/env PYTHONDONTWRITEBYTECODE=1 \
+  /usr/bin/python3 "$target/manage.py" validate-all --allow-missing-data
+/usr/sbin/runuser -u regional-map -- /usr/bin/env \
+  PYTHONDONTWRITEBYTECODE=1 \
+  RMF_CONTENT_ROOT="$content_root" \
+  RMF_RUNTIME_ROOT="$runtime_root" \
+  /usr/bin/python3 "$target/manage.py" deployment-check
+
+previous=""
+if [[ -L "$current_link" ]]; then
+  previous="$(/usr/bin/readlink -f "$current_link")"
+fi
+next_link="$application_root/.current.$$.next"
+/usr/bin/ln -s "$target" "$next_link"
+/usr/bin/mv -Tf "$next_link" "$current_link"
+
+rollback() {
+  echo "Health check failed; rolling back." >&2
+  if [[ -n "$previous" && -d "$previous" ]]; then
+    rollback_link="$application_root/.current.$$.rollback"
+    /usr/bin/ln -s "$previous" "$rollback_link"
+    /usr/bin/mv -Tf "$rollback_link" "$current_link"
+    /usr/bin/systemctl restart "$service_name" || true
+  else
+    /usr/bin/systemctl stop "$service_name" || true
+    /usr/bin/unlink "$current_link" || true
+  fi
+  exit 1
+}
+
+/usr/bin/systemctl restart "$service_name" || rollback
+healthy=0
+for _ in $(/usr/bin/seq 1 30); do
+  if /usr/bin/curl --fail --silent --show-error --max-time 2 "$health_url" >/dev/null; then
+    healthy=1
+    break
+  fi
+  /usr/bin/sleep 1
+done
+[[ "$healthy" -eq 1 ]] || rollback
+
+echo "Deployed $commit_sha successfully."

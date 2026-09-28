@@ -31,6 +31,9 @@
 Production-развёртывание на Linux описано в [DEPLOYMENT.md](DEPLOYMENT.md).
 В репозитории есть проверяемые шаблоны environment-файла, `systemd` и Nginx;
 региональные конфигурации и данные устанавливаются отдельным deployment-пакетом.
+Ручной production-CD через GitHub Actions использует отдельный forced-command
+SSH-ключ, разворачивает точный commit SHA и автоматически откатывает неуспешный
+release; настройка описана в разделе 8 deployment-инструкции.
 На сервере его можно полностью вынести из Git-клона через
 `RMF_CONTENT_ROOT=/srv/regional-map-deployment`.
 Изменяемое состояние регионов аналогично выносится через

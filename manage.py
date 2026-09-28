@@ -27,7 +27,9 @@ CORE_VERSION = "2.1.0"
 GEOMETRY_TYPES = {"Point", "MultiPoint", "LineString", "MultiLineString", "Polygon", "MultiPolygon"}
 CORE_FILES = (
     "index.html", "manage.py", "serve.py", "auth.py", "REGION_CONTRACT.md", "DEPLOYMENT.md", "core/map.js", "core/map.css",
+    ".github/workflows/validate.yml", ".github/workflows/deploy.yml",
     "deploy/regional-map-framework.env.example", "deploy/systemd/regional-map-framework.service", "deploy/nginx/regional-map-framework.conf",
+    "deploy/server/rmf-deploy", "deploy/server/rmf-deploy-gateway",
     "pipeline_core/runner.py", "pipeline_core/regeneration.py", "pipeline_core/build_roads.py", "pipeline_core/build_adaptive_density.py", "pipeline_core/normalize_layer.py",
     "pipeline_core/requirements-lock.txt", "pipeline_core/requirements-minimal-lock.txt",
     "pipeline_core/selftest.py", "schemas/deployment-bundle.schema.json", "schemas/registry.schema.json", "schemas/region.schema.json", "schemas/pipeline.schema.json",

@@ -1,0 +1,10 @@
+#!/bin/bash
+set -euo pipefail
+
+readonly original_command="${SSH_ORIGINAL_COMMAND:-}"
+if [[ ! "$original_command" =~ ^deploy[[:space:]]+([0-9a-f]{40})$ ]]; then
+  echo "Only 'deploy <40-character commit SHA>' is allowed." >&2
+  exit 64
+fi
+
+exec /usr/bin/sudo -n /usr/local/sbin/rmf-deploy "${BASH_REMATCH[1]}"

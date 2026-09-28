@@ -10,7 +10,8 @@ Python server.
 Use separate locations for immutable code, datasets and secrets:
 
 ```text
-/opt/regional-map-framework/          Git checkout, owned by root
+/opt/regional-map-framework/releases/ Immutable code releases, owned by root
+/opt/regional-map-framework/current   Symlink to the active verified release
 /srv/regional-map-deployment/         registry, region contracts and data links
 /srv/regional-map-data/<region>/      externally delivered GeoJSON snapshots
 /var/lib/regional-map-framework/      credentials and persistent private state
@@ -47,14 +48,18 @@ sudo install -d -o regional-map -g regional-map -m 0700 \
 The commands assume that SSH is already restricted to administrator keys and
 that the VPS firewall exposes only SSH, HTTP and HTTPS.
 
-## 2. Install and verify code
+## 2. Bootstrap and verify code
 
-Clone the repository into `/opt/regional-map-framework`, check out an explicit
-reviewed commit or release tag, and leave the checkout owned by `root:root`.
-Never deploy a mutable branch without recording its commit SHA.
+Use a temporary root-owned checkout only for bootstrapping. Check out an
+explicit reviewed commit and record its SHA. Production code is subsequently
+installed below `/opt/regional-map-framework/releases/` by the deployment
+gateway; never run the service from a mutable branch checkout.
 
 ```bash
-cd /opt/regional-map-framework
+sudo git clone https://github.com/GremSnoort/regional-map-framework.git \
+  /root/regional-map-framework-bootstrap
+cd /root/regional-map-framework-bootstrap
+git checkout <reviewed-commit-sha>
 python3 manage.py verify-core
 python3 -m unittest discover -s tests -v
 python3 pipeline_core/selftest.py
@@ -84,10 +89,11 @@ existing destination. The second command verifies every contract and every
 separately stored dataset against `deployment-manifest.json`. Transfer the
 contract bundle and the data directory independently; neither belongs in Git.
 
-On the VPS, verify the uploaded files before installing them:
+On the VPS, use the bootstrap checkout to verify the uploaded files before
+installing them:
 
 ```bash
-cd /opt/regional-map-framework
+cd /root/regional-map-framework-bootstrap
 python3 manage.py bundle-verify \
   --bundle-dir /path/to/uploaded/contracts \
   --data-dir /path/to/uploaded/data
@@ -127,7 +133,7 @@ sudo chmod -R u=rwX,g=rX,o= \
 For an external-data region, attach its snapshot and validate it:
 
 ```bash
-cd /opt/regional-map-framework
+cd /root/regional-map-framework-bootstrap
 sudo env RMF_CONTENT_ROOT=/srv/regional-map-deployment \
   RMF_RUNTIME_ROOT=/var/lib/regional-map-framework/regions \
   python3 manage.py attach-data my_region \
@@ -178,7 +184,7 @@ Create the first administrator credential interactively. The password is not
 placed in shell history:
 
 ```bash
-cd /opt/regional-map-framework
+cd /root/regional-map-framework-bootstrap
 sudo -u regional-map env \
   RMF_AUTH_FILE=/var/lib/regional-map-framework/users.json \
   python3 manage.py auth-set-user map_admin
@@ -187,19 +193,55 @@ sudo -u regional-map env \
 Back up `users.json` to a private encrypted location. Replacing or losing that
 file invalidates sessions and removes the configured accounts.
 
-## 5. Install the service
+## 5. Install the deployment gateway and service
+
+Install the root-owned scripts and create a password-locked deployment user.
+OpenSSH needs a valid shell to execute a forced command, but the only authorized
+key is restricted to the gateway and therefore cannot open an interactive shell.
 
 ```bash
+cd /root/regional-map-framework-bootstrap
+sudo install -o root -g root -m 0755 deploy/server/rmf-deploy \
+  /usr/local/sbin/rmf-deploy
+sudo install -o root -g root -m 0755 deploy/server/rmf-deploy-gateway \
+  /usr/local/sbin/rmf-deploy-gateway
+sudo useradd --system --create-home --home-dir /var/lib/rmf-deploy \
+  --shell /bin/bash rmf-deploy
+sudo install -d -o rmf-deploy -g rmf-deploy -m 0700 \
+  /var/lib/rmf-deploy/.ssh
+```
+
+Install this narrowly scoped sudo rule as
+`/etc/sudoers.d/regional-map-framework-deploy` and validate it with `visudo -cf`:
+
+```text
+rmf-deploy ALL=(root) NOPASSWD: /usr/local/sbin/rmf-deploy *
+```
+
+Generate a dedicated Ed25519 CI key off-server. Put only its public half on the
+VPS, prefixed by the forced-command restrictions below. Never reuse an
+administrator key:
+
+```text
+restrict,command="/usr/local/sbin/rmf-deploy-gateway" ssh-ed25519 AAAA... github-actions-production
+```
+
+Then install the service definition. It resolves code through the atomic
+`current` symlink:
+
+```bash
+cd /root/regional-map-framework-bootstrap
 sudo install -o root -g root -m 0644 \
   deploy/systemd/regional-map-framework.service \
   /etc/systemd/system/regional-map-framework.service
 sudo systemctl daemon-reload
-sudo systemctl enable --now regional-map-framework
+sudo /usr/local/sbin/rmf-deploy "$(git rev-parse HEAD)"
+sudo systemctl enable regional-map-framework
 sudo systemctl status regional-map-framework
 curl --fail --silent http://127.0.0.1:8000/healthz
 ```
 
-The default unit makes the checkout and datasets read-only. This is intentional
+The default unit makes the active release and datasets read-only. This is intentional
 for the initial deployment where `RMF_ALLOW_REGENERATION=0`. Before every start
 it runs `deployment-check` as the same unprivileged service account; invalid or
 unreadable content prevents the HTTP server from starting.
@@ -254,6 +296,31 @@ Expected behavior:
 - the Python process listens only on `127.0.0.1:8000`;
 - every registered region passes `manage.py validate` and opens after login.
 
+## 8. GitHub Actions production deployment
+
+The repository workflow `.github/workflows/deploy.yml` is manual-only and
+accepts deployments solely when the actor is `GremSnoort`, the repository is
+`GremSnoort/regional-map-framework`, and the selected ref is `master`. It uses a
+GitHub-hosted runner; do not install a self-hosted Actions runner on the VPS.
+
+Create a GitHub Environment named `production` with `GremSnoort` as its only
+required reviewer and restrict deployment branches to `master`. Keep
+"Prevent self-review" disabled when the repository owner is the sole reviewer.
+Configure these environment values:
+
+```text
+Secret:   VPS_DEPLOY_SSH_KEY     dedicated private Ed25519 key
+Secret:   VPS_SSH_KNOWN_HOSTS    verified host-key line for the VPS
+Variable: VPS_HOST               public VPS address
+Variable: VPS_USER               rmf-deploy
+```
+
+The workflow never receives application passwords or regional data. After
+approval it sends only `deploy <commit-sha>` over SSH. The forced command checks
+the syntax, and the root-owned deployment script additionally verifies that the
+commit belongs to `origin/master`, runs the test and production preflight suite,
+atomically updates `current`, checks `/healthz`, and rolls back on failure.
+
 ## Updates and rollback
 
 Before every update, record the active commit SHA and back up credentials and
@@ -261,20 +328,14 @@ non-regenerable data. Fetch the new release, verify it and its regions, then
 restart the service:
 
 ```bash
-cd /opt/regional-map-framework
-python3 manage.py verify-core
-python3 -m unittest discover -s tests -v
-sudo env RMF_CONTENT_ROOT=/srv/regional-map-deployment \
-  RMF_RUNTIME_ROOT=/var/lib/regional-map-framework/regions \
-  python3 manage.py deployment-check
-sudo systemctl restart regional-map-framework
-curl --fail --silent http://127.0.0.1:8000/healthz
+readlink -f /opt/regional-map-framework/current
+sudo /usr/local/sbin/rmf-deploy <reviewed-commit-sha>
 ```
 
-Rollback means checking out the previously recorded release, restoring the
-matching regional contracts/snapshot if their schema changed, validating, and
-restarting the service. Never use `git reset --hard` against a directory that
-contains uncommitted regional contracts.
+The gateway automatically restores the previous `current` target when restart
+or health checking fails. Regional contracts and snapshots remain independent;
+if their schema changed, restore their matching package before retrying. Never
+use `git reset --hard` against deployment content or data directories.
 
 ## Enabling regeneration later
 

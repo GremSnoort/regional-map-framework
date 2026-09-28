@@ -9,8 +9,8 @@
     },
     "manage.py": {
       "path": "manage.py",
-      "bytes": 47452,
-      "sha256": "41a05ad822635f65ad3bd39312e2028298472a5c71e0cc9e7a0f9e07468193e0"
+      "bytes": 47590,
+      "sha256": "f19209555647b7eb64cbfefa71e01c5dc981e070289bfb31c253d53747f5b76a"
     },
     "serve.py": {
       "path": "serve.py",
@@ -29,8 +29,8 @@
     },
     "DEPLOYMENT.md": {
       "path": "DEPLOYMENT.md",
-      "bytes": 11654,
-      "sha256": "6fe5d8923bf00f4dbaa847a1687630c59738b8835e102b11eb80a8375dc6fb71"
+      "bytes": 14443,
+      "sha256": "59ad79e743881ca289f5a2d944a4fa0031d45c613070f6814c26af6864f05c13"
     },
     "core/map.js": {
       "path": "core/map.js",
@@ -42,6 +42,16 @@
       "bytes": 4305,
       "sha256": "43a65f5f2dda14e191e41caa49258707eced9dce1abb83b3a1a496686a821900"
     },
+    ".github/workflows/validate.yml": {
+      "path": ".github/workflows/validate.yml",
+      "bytes": 600,
+      "sha256": "3d05728fe539430b379f9f2bff9778e7ba7c2c504a3357dbff3e96932cc239fc"
+    },
+    ".github/workflows/deploy.yml": {
+      "path": ".github/workflows/deploy.yml",
+      "bytes": 2311,
+      "sha256": "b65e0b31969506fe08d47b37b5a847d1c300d1f0aeba8088e7f07bd716dec1af"
+    },
     "deploy/regional-map-framework.env.example": {
       "path": "deploy/regional-map-framework.env.example",
       "bytes": 645,
@@ -49,13 +59,23 @@
     },
     "deploy/systemd/regional-map-framework.service": {
       "path": "deploy/systemd/regional-map-framework.service",
-      "bytes": 1099,
-      "sha256": "7ed4beb48e7fae05b0af6af7f67606edcf49705265c975e6d627736f8a64a737"
+      "bytes": 1123,
+      "sha256": "05e1542c81df9cc34e9c37db3ba93c15faa3fbab888a0aa9c87bbecb5d74869f"
     },
     "deploy/nginx/regional-map-framework.conf": {
       "path": "deploy/nginx/regional-map-framework.conf",
       "bytes": 1122,
       "sha256": "dc486eae41dbf50018857c94f421a2f3697e535c580b9c1f75f1472ec59941cd"
+    },
+    "deploy/server/rmf-deploy": {
+      "path": "deploy/server/rmf-deploy",
+      "bytes": 4052,
+      "sha256": "0b850bbf87b2ee79e9ab2f6b3e4c1c117d120e2f07f32de7cb400c241cf2bf72"
+    },
+    "deploy/server/rmf-deploy-gateway": {
+      "path": "deploy/server/rmf-deploy-gateway",
+      "bytes": 309,
+      "sha256": "270eaf768b060a3092bb41e464679d92f8823d8dc8dc5d6d8f67a38c295d9ebf"
     },
     "pipeline_core/runner.py": {
       "path": "pipeline_core/runner.py",
