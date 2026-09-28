@@ -1,0 +1,22 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://example.invalid/regional-map-framework/registry.schema.json",
+  "title": "Regional Map Framework registry",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schema_version", "default_region", "regions"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "default_region": {
+      "oneOf": [
+        {"type": "null"},
+        {"type": "string", "pattern": "^[a-z0-9][a-z0-9_-]*$"}
+      ]
+    },
+    "regions": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {"type": "string", "pattern": "^[a-z0-9][a-z0-9_-]*$"}
+    }
+  }
+}

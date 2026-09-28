@@ -12,21 +12,25 @@ import shutil
 import subprocess
 import sys
 import tempfile
+from datetime import datetime, timezone
 from pathlib import Path
 
 import auth
 
 ROOT = Path(__file__).resolve().parent
-REGIONS = ROOT / "regions"
-REGISTRY = ROOT / "registry.json"
+CONTENT_ROOT = Path(os.environ.get("RMF_CONTENT_ROOT", ROOT)).expanduser().resolve()
+RUNTIME_ROOT = Path(os.environ["RMF_RUNTIME_ROOT"]).expanduser().resolve() if os.environ.get("RMF_RUNTIME_ROOT") else None
+REGIONS = CONTENT_ROOT / "regions"
+REGISTRY = CONTENT_ROOT / "registry.json"
 CORE_LOCK = ROOT / "core.lock.json"
 CORE_VERSION = "2.1.0"
 GEOMETRY_TYPES = {"Point", "MultiPoint", "LineString", "MultiLineString", "Polygon", "MultiPolygon"}
 CORE_FILES = (
-    "index.html", "manage.py", "serve.py", "auth.py", "REGION_CONTRACT.md", "core/map.js", "core/map.css",
+    "index.html", "manage.py", "serve.py", "auth.py", "REGION_CONTRACT.md", "DEPLOYMENT.md", "core/map.js", "core/map.css",
+    "deploy/regional-map-framework.env.example", "deploy/systemd/regional-map-framework.service", "deploy/nginx/regional-map-framework.conf",
     "pipeline_core/runner.py", "pipeline_core/regeneration.py", "pipeline_core/build_roads.py", "pipeline_core/build_adaptive_density.py", "pipeline_core/normalize_layer.py",
     "pipeline_core/requirements-lock.txt", "pipeline_core/requirements-minimal-lock.txt",
-    "pipeline_core/selftest.py", "schemas/region.schema.json", "schemas/pipeline.schema.json",
+    "pipeline_core/selftest.py", "schemas/deployment-bundle.schema.json", "schemas/registry.schema.json", "schemas/region.schema.json", "schemas/pipeline.schema.json",
     "schemas/analytics-plugin.schema.json", "schemas/regeneration.schema.json",
     "templates/layer.example.json", "templates/region.example.json",
     "templates/standard_layer.example.json", "templates/analytics-plugin.example.json",
@@ -91,6 +95,30 @@ def safe_id(value: str, label: str = "id") -> str:
     if not re.fullmatch(r"[a-z0-9][a-z0-9_-]*", value):
         raise ValueError(f"{label} must contain lowercase ASCII letters, digits, _ or -")
     return value
+
+
+def validate_registry_payload(registry: dict, require_regions: bool = False) -> dict:
+    if set(registry) != {"schema_version", "default_region", "regions"} or registry.get("schema_version") != 1:
+        raise ValueError("registry.json has unsupported or unknown fields")
+    regions = registry.get("regions")
+    if not isinstance(regions, list) or any(not isinstance(item, str) for item in regions):
+        raise ValueError("registry.json regions must be an array of region IDs")
+    for item in regions:
+        safe_id(item, "registry region_id")
+    if len(regions) != len(set(regions)):
+        raise ValueError("registry.json contains duplicate region IDs")
+    default = registry.get("default_region")
+    if default is not None and (not isinstance(default, str) or default not in regions):
+        raise ValueError("registry.json default_region must be null or belong to regions")
+    if require_regions and (not regions or default is None):
+        raise ValueError("deployment requires at least one region and a default_region")
+    return registry
+
+
+def validate_registry(require_regions: bool = False) -> dict:
+    if REGISTRY.is_symlink():
+        raise ValueError("registry.json must be a regular file, not a symlink")
+    return validate_registry_payload(read_json(REGISTRY), require_regions)
 
 
 def region_dir(region_id: str) -> Path:
@@ -247,8 +275,12 @@ def layer_records(root: Path, config: dict) -> tuple[dict, dict, list[str]]:
     return counts, records, missing
 
 
+def runtime_dir(root: Path) -> Path:
+    return RUNTIME_ROOT / root.name if RUNTIME_ROOT else root / ".runtime"
+
+
 def runtime_manifest(root: Path) -> Path:
-    return root / ".runtime" / "publication.json"
+    return runtime_dir(root) / "publication.json"
 
 
 def pipeline_manifest(root: Path) -> Path:
@@ -326,7 +358,7 @@ def init_region(region_id: str, title: str, latitude: float, longitude: float, d
     (root / "SOURCES.md").write_text(f"# Источники: {title}\n\nЗаполните источник, дату снимка, лицензию, SHA-256 и преобразования каждого слоя.\n", encoding="utf-8")
     (root / "sources" / "README.md").write_text("# Локальные исходники\n\nФайлы этого каталога игнорируются Git. Не удаляйте этот README.\n", encoding="utf-8")
     (root / "pipeline" / "plugins" / "README.md").write_text("# Аналитические plugins\n\nКаждый JSON обязан соответствовать schemas/analytics-plugin.schema.json.\n", encoding="utf-8")
-    registry = read_json(REGISTRY); registry["regions"] = sorted(set(registry.get("regions", [])) | {region_id}); registry["default_region"] = registry.get("default_region") or region_id; atomic_json(REGISTRY, registry)
+    registry = validate_registry(); registry["regions"] = sorted(set(registry["regions"]) | {region_id}); registry["default_region"] = registry.get("default_region") or region_id; atomic_json(REGISTRY, registry)
     print(f"Initialized {region_id}: {root}")
 
 
@@ -484,15 +516,156 @@ def promote(region_id: str) -> None:
 
 
 def validate_all(allow_missing: bool) -> None:
-    for item in read_json(REGISTRY).get("regions", []): inspect_region(item, allow_missing=allow_missing, require_provenance=not allow_missing)
+    for item in validate_registry()["regions"]: inspect_region(item, allow_missing=allow_missing, require_provenance=not allow_missing)
+
+
+def deployment_check() -> None:
+    registry = validate_registry(require_regions=True); results = {}; failures = {}
+    for region_id in registry["regions"]:
+        root = region_dir(region_id); unsafe = []
+        if root.is_symlink(): unsafe.append("region directory must not be a symlink")
+        if (root / "region.json").is_symlink(): unsafe.append("region.json must not be a symlink")
+        if unsafe:
+            results[region_id] = {"issues": unsafe, "ready_for_production": False}; failures[region_id] = unsafe; continue
+        state = readiness(region_id); results[region_id] = state
+        issues = list(state["issues"])
+        if not state["ready_for_production"]:
+            config = read_json(region_dir(region_id) / "region.json")
+            if config.get("lifecycle") != "production": issues.append("lifecycle is not production")
+        if issues: failures[region_id] = sorted(set(issues))
+    report = {"content_root": str(CONTENT_ROOT), "default_region": registry["default_region"], "regions": results, "ready": not failures}
+    print(json.dumps(report, ensure_ascii=False, indent=2))
+    if failures: raise ValueError("Deployment is not ready: " + json.dumps(failures, ensure_ascii=False))
+
+
+def deployment_contract_paths(root: Path) -> list[Path]:
+    paths = [root / "region.json", root / "SOURCES.md"]
+    for directory in (root / "sources", root / "pipeline"):
+        if directory.is_symlink():
+            raise ValueError(f"Deployment contract directory must not be a symlink: {directory}")
+    source_readme = root / "sources" / "README.md"
+    if source_readme.is_file(): paths.append(source_readme)
+    pipeline = root / "pipeline"
+    if pipeline.is_dir():
+        for path in pipeline.rglob("*"):
+            relative = path.relative_to(pipeline)
+            if any(part in {"cache", "outputs", "__pycache__"} for part in relative.parts) or path.suffix in {".pyc", ".pyo"}: continue
+            if path.is_symlink(): raise ValueError(f"Deployment contract must not contain symlinks: {path}")
+            if path.is_file(): paths.append(path)
+    for path in paths:
+        if path.is_symlink() or not path.is_file():
+            raise ValueError(f"Missing or unsafe deployment contract file: {path}")
+    return sorted(set(paths))
+
+
+def build_deployment_bundle(output: Path) -> None:
+    deployment_check(); registry = validate_registry(require_regions=True)
+    output = output.expanduser().absolute()
+    if output.exists(): raise ValueError(f"Refusing to replace existing deployment bundle: {output}")
+    output.parent.mkdir(parents=True, exist_ok=True)
+    staging = Path(tempfile.mkdtemp(prefix=f".{output.name}.", dir=output.parent))
+    try:
+        content = staging / "content"; content.mkdir()
+        shutil.copy2(REGISTRY, content / "registry.json")
+        data = {}
+        for region_id in registry["regions"]:
+            root = region_dir(region_id); destination = content / "regions" / region_id
+            for source in deployment_contract_paths(root):
+                relative = source.relative_to(root); target = destination / relative
+                target.parent.mkdir(parents=True, exist_ok=True); shutil.copy2(source, target)
+            publication = read_json(runtime_manifest(root))
+            data[region_id] = {
+                "data_mode": publication["data_mode"],
+                "configuration_sha256": publication["configuration_sha256"],
+                "outputs": publication["outputs"],
+                "validation": publication["validation"],
+            }
+        files = {str(path.relative_to(staging)): record(path, staging) for path in sorted(content.rglob("*")) if path.is_file() and not path.is_symlink()}
+        manifest = {
+            "schema_version": 1,
+            "core_version": CORE_VERSION,
+            "created_at": datetime.now(timezone.utc).isoformat(timespec="seconds"),
+            "default_region": registry["default_region"],
+            "regions": registry["regions"],
+            "files": files,
+            "data": data,
+        }
+        atomic_json(staging / "deployment-manifest.json", manifest)
+        verify_deployment_bundle(staging)
+        os.replace(staging, output)
+    except BaseException:
+        shutil.rmtree(staging, ignore_errors=True); raise
+    print(f"Deployment bundle written without datasets: {output}")
+
+
+def validate_file_record(value: dict, expected_path: str) -> None:
+    if not isinstance(value, dict) or set(value) != {"path", "bytes", "sha256"}:
+        raise ValueError(f"Invalid file record: {expected_path}")
+    if value.get("path") != expected_path or not isinstance(value.get("bytes"), int) or isinstance(value["bytes"], bool) or value["bytes"] < 0 or not re.fullmatch(r"[0-9a-f]{64}", str(value.get("sha256", ""))):
+        raise ValueError(f"Invalid file metadata: {expected_path}")
+
+
+def verify_deployment_bundle(bundle: Path, data_root: Path | None = None) -> None:
+    bundle = bundle.expanduser().absolute()
+    if not bundle.is_dir() or bundle.is_symlink(): raise ValueError(f"Deployment bundle is not a regular directory: {bundle}")
+    bundle = bundle.resolve()
+    symlinks = [str(path.relative_to(bundle)) for path in bundle.rglob("*") if path.is_symlink()]
+    if symlinks: raise ValueError(f"Deployment bundle contains symlinks: {symlinks}")
+    manifest_path = bundle / "deployment-manifest.json"; manifest = read_json(manifest_path)
+    required = {"schema_version", "core_version", "created_at", "default_region", "regions", "files", "data"}
+    if set(manifest) != required or manifest.get("schema_version") != 1 or manifest.get("core_version") != CORE_VERSION:
+        raise ValueError("Deployment manifest has unsupported or unknown fields")
+    try: created = datetime.fromisoformat(manifest["created_at"])
+    except (TypeError, ValueError): raise ValueError("Deployment manifest created_at is invalid") from None
+    if created.tzinfo is None: raise ValueError("Deployment manifest created_at must include a timezone")
+    registry = validate_registry_payload(read_json(bundle / "content" / "registry.json"), require_regions=True)
+    if manifest["regions"] != registry["regions"] or manifest["default_region"] != registry["default_region"]:
+        raise ValueError("Deployment manifest differs from content/registry.json")
+    files = manifest.get("files")
+    if not isinstance(files, dict): raise ValueError("Deployment manifest files must be an object")
+    actual_paths = {str(path.relative_to(bundle)) for path in bundle.rglob("*") if path.is_file() and path != manifest_path}
+    if set(files) != actual_paths: raise ValueError(f"Deployment contract file set differs: expected={sorted(files)}, actual={sorted(actual_paths)}")
+    for relative, expected in files.items():
+        validate_file_record(expected, relative)
+        if record(bundle / relative, bundle) != expected: raise ValueError(f"Deployment contract checksum differs: {relative}")
+    data = manifest.get("data")
+    if not isinstance(data, dict) or set(data) != set(registry["regions"]): raise ValueError("Deployment data manifest differs from registry")
+    for region_id in registry["regions"]:
+        config = read_json(bundle / "content" / "regions" / region_id / "region.json"); validate_config(config, region_id)
+        if config["lifecycle"] != "production": raise ValueError(f"Deployment region lifecycle is not production: {region_id}")
+        spec = data[region_id]
+        if not isinstance(spec, dict) or set(spec) != {"data_mode", "configuration_sha256", "outputs", "validation"}: raise ValueError(f"Invalid deployment data entry: {region_id}")
+        if spec["data_mode"] != config["data_mode"] or spec["configuration_sha256"] != config_sha256(config): raise ValueError(f"Deployment data identity differs: {region_id}")
+        outputs = spec.get("outputs")
+        if not isinstance(outputs, dict) or set(outputs) != {layer["file"] for layer in config["layers"].values()}: raise ValueError(f"Deployment data outputs differ from layers: {region_id}")
+        for relative, expected in outputs.items(): validate_file_record(expected, relative)
+        validation = spec.get("validation")
+        if not isinstance(validation, dict) or set(validation) != set(config["layers"]) or any(not isinstance(value, int) or isinstance(value, bool) or value < 0 for value in validation.values()): raise ValueError(f"Invalid validation counts: {region_id}")
+    if data_root is not None:
+        data_root = data_root.expanduser().absolute()
+        if data_root.is_symlink() or not data_root.is_dir(): raise ValueError(f"Deployment data root must be a regular directory: {data_root}")
+        data_root = data_root.resolve()
+        for region_id, spec in data.items():
+            region_data = data_root / region_id
+            if region_data.is_symlink() or not region_data.is_dir(): raise ValueError(f"Missing or unsafe deployment region data directory: {region_data}")
+            for relative, expected in spec["outputs"].items():
+                nested = data_relative(relative); target = region_data / nested
+                current = region_data; unsafe = False
+                for part in nested.parts:
+                    current = current / part
+                    if current.is_symlink(): unsafe = True; break
+                if unsafe or not target.is_file(): raise ValueError(f"Missing or unsafe deployment dataset: {target}")
+                actual = {"path": relative, "bytes": target.stat().st_size, "sha256": sha256(target)}
+                if actual != expected: raise ValueError(f"Deployment dataset checksum differs: {target}")
+    print(json.dumps({"bundle": str(bundle), "regions": registry["regions"], "contract_files": len(files), "data_verified": data_root is not None}, ensure_ascii=False, indent=2))
 
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("command", choices=("init-region", "add-layer", "attach-data", "accept-data", "detach-data", "build", "sync", "validate", "validate-all", "doctor", "promote", "self-test", "verify-core", "auth-set-user", "auth-delete-user", "auth-list-users")); parser.add_argument("region", nargs="?")
+    parser.add_argument("command", choices=("init-region", "add-layer", "attach-data", "accept-data", "detach-data", "build", "sync", "validate", "validate-all", "deployment-check", "bundle-build", "bundle-verify", "doctor", "promote", "self-test", "verify-core", "auth-set-user", "auth-delete-user", "auth-list-users")); parser.add_argument("region", nargs="?")
     parser.add_argument("--title"); parser.add_argument("--center-lat", type=float); parser.add_argument("--center-lon", type=float); parser.add_argument("--data-mode", choices=("external", "pipeline"), default="external")
     parser.add_argument("--layer-id"); parser.add_argument("--file"); parser.add_argument("--label"); parser.add_argument("--geometry", action="append", default=[]); parser.add_argument("--renderer", choices=("auto", "points", "lines", "polygons", "choropleth", "density", "ranking"), default="auto"); parser.add_argument("--required", action="store_true")
-    parser.add_argument("--data-dir", type=Path); parser.add_argument("--attach-mode", choices=("symlink", "junction", "copy"), default="symlink"); parser.add_argument("--allow-missing-data", action="store_true"); parser.add_argument("--write-core-lock", action="store_true")
+    parser.add_argument("--data-dir", type=Path); parser.add_argument("--attach-mode", choices=("symlink", "junction", "copy"), default="symlink"); parser.add_argument("--allow-missing-data", action="store_true"); parser.add_argument("--write-core-lock", action="store_true"); parser.add_argument("--bundle-dir", type=Path)
     args = parser.parse_args()
     if args.command == "verify-core": verify_core(args.write_core_lock); return
     verify_core()
@@ -506,6 +679,13 @@ def main() -> None:
         return
     if args.command == "self-test": subprocess.run([sys.executable, str(ROOT / "pipeline_core" / "selftest.py")], check=True); return
     if args.command == "validate-all": validate_all(args.allow_missing_data); return
+    if args.command == "deployment-check": deployment_check(); return
+    if args.command == "bundle-build":
+        if args.bundle_dir is None: parser.error("bundle-build requires --bundle-dir")
+        build_deployment_bundle(args.bundle_dir); return
+    if args.command == "bundle-verify":
+        if args.bundle_dir is None: parser.error("bundle-verify requires --bundle-dir")
+        verify_deployment_bundle(args.bundle_dir, args.data_dir); return
     if not args.region: parser.error("region is required")
     if args.command == "init-region":
         if args.title is None or args.center_lat is None or args.center_lon is None: parser.error("init-region requires --title, --center-lat and --center-lon")

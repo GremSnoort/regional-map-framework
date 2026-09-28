@@ -9,13 +9,13 @@
     },
     "manage.py": {
       "path": "manage.py",
-      "bytes": 35203,
-      "sha256": "a8b3bdbd8fd3ccf582ad26856563e64f135342878ccd10ef4d09f605fa7ef680"
+      "bytes": 47452,
+      "sha256": "41a05ad822635f65ad3bd39312e2028298472a5c71e0cc9e7a0f9e07468193e0"
     },
     "serve.py": {
       "path": "serve.py",
-      "bytes": 16770,
-      "sha256": "69d9722c4ad5a1b3fe20706e583fb68bd7ce5adb7a7619718e0f746ec4dca13e"
+      "bytes": 17551,
+      "sha256": "b79620e8caa10abfacbc7a4861c12dc0dbe52a8a0803e0e2ccc806ed03a831df"
     },
     "auth.py": {
       "path": "auth.py",
@@ -24,8 +24,13 @@
     },
     "REGION_CONTRACT.md": {
       "path": "REGION_CONTRACT.md",
-      "bytes": 9279,
-      "sha256": "672aee4be81ff5c92721b350b050d0891e764c08560c000c3ffa7699c08bd2a3"
+      "bytes": 9590,
+      "sha256": "03de3d552902eef32693a8ef322d963d48717af9ad56e96dd4dc2ac3c9d43f3c"
+    },
+    "DEPLOYMENT.md": {
+      "path": "DEPLOYMENT.md",
+      "bytes": 11654,
+      "sha256": "6fe5d8923bf00f4dbaa847a1687630c59738b8835e102b11eb80a8375dc6fb71"
     },
     "core/map.js": {
       "path": "core/map.js",
@@ -37,6 +42,21 @@
       "bytes": 4305,
       "sha256": "43a65f5f2dda14e191e41caa49258707eced9dce1abb83b3a1a496686a821900"
     },
+    "deploy/regional-map-framework.env.example": {
+      "path": "deploy/regional-map-framework.env.example",
+      "bytes": 645,
+      "sha256": "d437855c808dcfbe6fc51c0d381bc06622870e3b04c138822d3cc7516cde9d26"
+    },
+    "deploy/systemd/regional-map-framework.service": {
+      "path": "deploy/systemd/regional-map-framework.service",
+      "bytes": 1099,
+      "sha256": "7ed4beb48e7fae05b0af6af7f67606edcf49705265c975e6d627736f8a64a737"
+    },
+    "deploy/nginx/regional-map-framework.conf": {
+      "path": "deploy/nginx/regional-map-framework.conf",
+      "bytes": 1122,
+      "sha256": "dc486eae41dbf50018857c94f421a2f3697e535c580b9c1f75f1472ec59941cd"
+    },
     "pipeline_core/runner.py": {
       "path": "pipeline_core/runner.py",
       "bytes": 15839,
@@ -44,8 +64,8 @@
     },
     "pipeline_core/regeneration.py": {
       "path": "pipeline_core/regeneration.py",
-      "bytes": 5308,
-      "sha256": "2fed3e3f0fcfa96085eb7d4d069db401cf616865a5eeffc85805b17b74809fab"
+      "bytes": 5330,
+      "sha256": "b7aebeb763b7089d291e2f97d53c5b6b3eed13d9632b94cb046c960ffd062ea3"
     },
     "pipeline_core/build_roads.py": {
       "path": "pipeline_core/build_roads.py",
@@ -76,6 +96,16 @@
       "path": "pipeline_core/selftest.py",
       "bytes": 5978,
       "sha256": "4f59cde4de4d24b2555d1c352524afe01aeb3d8406adcbfc730530c0b21d840c"
+    },
+    "schemas/deployment-bundle.schema.json": {
+      "path": "schemas/deployment-bundle.schema.json",
+      "bytes": 1798,
+      "sha256": "75628a36c513b2a897d1c88bff395759b8a805ba4e009bb3e8f946b0c8d38d2d"
+    },
+    "schemas/registry.schema.json": {
+      "path": "schemas/registry.schema.json",
+      "bytes": 653,
+      "sha256": "9768523e6c9b064f7aba0885ad75d1b8de076e25fbdf9eced7bbda01169963de"
     },
     "schemas/region.schema.json": {
       "path": "schemas/region.schema.json",

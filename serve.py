@@ -12,6 +12,12 @@ import auth
 
 ROOT=Path(__file__).resolve().parent;COOKIE_NAME="rmf_session";LOGIN_LIMIT=5;LOGIN_WINDOW_SECONDS=15*60
 FAILURES={};FAILURES_LOCK=threading.Lock()
+def content_root():
+ value=os.environ.get("RMF_CONTENT_ROOT")
+ return Path(value).expanduser().resolve() if value else ROOT
+def runtime_dir(region_root):
+ value=os.environ.get("RMF_RUNTIME_ROOT")
+ return Path(value).expanduser().resolve()/region_root.name if value else region_root/".runtime"
 def payload(path,default):
  try:
   value=json.loads(path.read_text(encoding="utf-8"));return value if isinstance(value,dict) else default
@@ -79,7 +85,7 @@ def same_origin(handler):
  origin=handler.headers.get("Origin")
  return not origin or urlparse(origin).netloc==handler.headers.get("Host","")
 def registered_regions():
- value=payload(ROOT/"registry.json",{})
+ value=payload(content_root()/"registry.json",{})
  regions=value.get("regions",[])
  if not isinstance(regions,list):return set()
  return {item for item in regions if isinstance(item,str) and re.fullmatch(r"[a-z0-9][a-z0-9_-]*",item)}
@@ -91,7 +97,12 @@ def public_file(request_path):
  try:path=unquote(request_path,errors="strict")
  except (UnicodeDecodeError,UnicodeEncodeError):return None
  if "\0" in path or "\\" in path or "//" in path:return None
- fixed={"/":"index.html","/index.html":"index.html","/registry.json":"registry.json","/core/map.js":"core/map.js","/core/map.css":"core/map.css"}
+ fixed={"/":"index.html","/index.html":"index.html","/core/map.js":"core/map.js","/core/map.css":"core/map.css"}
+ if path=="/registry.json":
+  root=content_root();candidate=root/"registry.json"
+  try:resolved=candidate.resolve(strict=True);safe_root=root.resolve(strict=True)
+  except OSError:return None
+  return resolved if candidate.is_file() and not candidate.is_symlink() and beneath(resolved,safe_root) else None
  if path in fixed:
   candidate=ROOT/fixed[path]
   try:resolved=candidate.resolve(strict=True);safe_root=ROOT.resolve(strict=True)
@@ -101,7 +112,7 @@ def public_file(request_path):
  if not match:return None
  region_id,relative=match.groups()
  if region_id not in registered_regions():return None
- region_root=ROOT/"regions"/region_id
+ region_root=content_root()/"regions"/region_id
  if region_root.is_symlink() or not region_root.is_dir():return None
  config_path=region_root/"region.json"
  if config_path.is_symlink():return None
@@ -153,9 +164,9 @@ class Handler(SimpleHTTPRequestHandler):
  def api_region(self):
   rid=parse_qs(urlparse(self.path).query).get("region",[""])[0]
   if not re.fullmatch(r"[a-z0-9][a-z0-9_-]*",rid) or rid not in registered_regions():return None,None
-  root=ROOT/"regions"/rid
+  root=content_root()/"regions"/rid
   if root.is_symlink() or not root.is_dir():return None,None
-  return root,root/".runtime/regeneration.json"
+  return root,runtime_dir(root)/"regeneration.json"
  def read_form(self):
   try:length=int(self.headers.get("Content-Length","0"))
   except ValueError:length=0
@@ -211,13 +222,13 @@ class Handler(SimpleHTTPRequestHandler):
   if not spec.get("enabled"):return self.reply(HTTPStatus.NOT_FOUND,{"error":"not enabled"})
   cooldown=interval(spec);elapsed=elapsed_since(state.get("started_at"))
   if elapsed is not None and elapsed<cooldown:return self.reply(HTTPStatus.TOO_MANY_REQUESTS,{"error":"cooldown","retry_after_seconds":max(1,round(cooldown-elapsed))})
-  lock=root/".runtime/.regeneration.lock"
+  lock=runtime_dir(root)/".regeneration.lock"
   if not reserve_lock(lock):return self.reply(HTTPStatus.CONFLICT,{"error":"already running"})
   started=datetime.now(timezone.utc).astimezone().isoformat(timespec="seconds");running={"schema_version":1,"region_id":root.name,"status":"running","started_at":started,"min_interval_seconds":cooldown,"log_file":".runtime/regeneration.log"}
   if state.get("last_success_at"):running["last_success_at"]=state["last_success_at"]
   write_payload(state_path,running)
   try:
-   log_path=root/".runtime/regeneration.log";fd=os.open(log_path,os.O_WRONLY|os.O_CREAT|os.O_TRUNC,0o600)
+   log_path=runtime_dir(root)/"regeneration.log";fd=os.open(log_path,os.O_WRONLY|os.O_CREAT|os.O_TRUNC,0o600)
    if os.name!="nt":os.chmod(log_path,0o600)
    with os.fdopen(fd,"wb") as log:
     process=subprocess.Popen([sys.executable,str(ROOT/"pipeline_core/regeneration.py"),"--region",root.name,"--reserved-lock"],cwd=ROOT,start_new_session=True,stdout=log,stderr=subprocess.STDOUT)
@@ -228,6 +239,7 @@ class Handler(SimpleHTTPRequestHandler):
  def log_message(self,format,*args):super().log_message(format,*args)
 def main():
  parser=argparse.ArgumentParser();parser.add_argument("--bind",default="127.0.0.1");parser.add_argument("--port",type=int,default=8000);args=parser.parse_args();store=auth.load_store()
+ if os.environ.get("RMF_CONTENT_ROOT") and not (content_root()/"registry.json").is_file():raise SystemExit(f"Content registry is missing: {content_root()/'registry.json'}")
  if not store["users"]:raise SystemExit("Credential store has no users. Run: python3 manage.py auth-set-user <username>")
  if not loopback_bind(args.bind) and os.environ.get("RMF_COOKIE_SECURE")!="1" and os.environ.get("RMF_ALLOW_INSECURE_HTTP")!="1":raise SystemExit("Refusing a non-loopback bind without secure cookies. Use HTTPS + RMF_COOKIE_SECURE=1, or RMF_ALLOW_INSECURE_HTTP=1 only for isolated development")
  os.chdir(ROOT);ThreadingHTTPServer((args.bind,args.port),Handler).serve_forever()

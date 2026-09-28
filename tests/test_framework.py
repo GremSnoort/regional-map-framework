@@ -1,5 +1,6 @@
 import json
 import os
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -22,6 +23,45 @@ class FrameworkTest(unittest.TestCase):
     def test_core_files_exist(self):
         self.assertTrue(manage.core_records())
 
+    def test_production_deployment_templates_are_safe_by_default(self):
+        env = (manage.ROOT / "deploy/regional-map-framework.env.example").read_text(encoding="utf-8")
+        unit = (manage.ROOT / "deploy/systemd/regional-map-framework.service").read_text(encoding="utf-8")
+        nginx = (manage.ROOT / "deploy/nginx/regional-map-framework.conf").read_text(encoding="utf-8")
+        self.assertIn("RMF_COOKIE_SECURE=1", env)
+        self.assertIn("RMF_CONTENT_ROOT=/srv/regional-map-deployment", env)
+        self.assertIn("RMF_RUNTIME_ROOT=/var/lib/regional-map-framework/regions", env)
+        self.assertIn("RMF_ALLOW_REGENERATION=0", env)
+        self.assertIn("--bind 127.0.0.1", unit)
+        self.assertIn("ExecStartPre=/usr/bin/python3 /opt/regional-map-framework/manage.py deployment-check", unit)
+        self.assertNotIn("ExecStartPre=+", unit)
+        self.assertIn("User=regional-map", unit)
+        self.assertIn("ProtectSystem=strict", unit)
+        self.assertIn("proxy_pass http://127.0.0.1:8000", nginx)
+        self.assertIn("proxy_set_header X-Forwarded-For $remote_addr", nginx)
+        self.assertNotRegex(nginx, r"(?m)^\s*(root|alias|try_files)\s")
+
+    def test_server_can_read_content_outside_the_code_checkout(self):
+        with tempfile.TemporaryDirectory() as directory:
+            temporary = Path(directory)
+            content = temporary / "content"
+            (content / "regions/demo/data").mkdir(parents=True)
+            (content / "registry.json").write_text(json.dumps({"schema_version": 1, "default_region": "demo", "regions": ["demo"]}), encoding="utf-8")
+            (content / "regions/demo/region.json").write_text(json.dumps({"region_id": "demo", "layers": {"objects": {"file": "data/objects.geojson"}}}), encoding="utf-8")
+            (content / "regions/demo/data/objects.geojson").write_text('{"type":"FeatureCollection","features":[]}', encoding="utf-8")
+            with patch.dict(os.environ, {"RMF_CONTENT_ROOT": str(content)}):
+                self.assertEqual(serve.public_file("/registry.json"), (content / "registry.json").resolve())
+                self.assertEqual(serve.public_file("/regions/demo/region.json"), (content / "regions/demo/region.json").resolve())
+                self.assertEqual(serve.public_file("/regions/demo/data/objects.geojson"), (content / "regions/demo/data/objects.geojson").resolve())
+
+    def test_runtime_state_can_live_outside_region_contracts(self):
+        with tempfile.TemporaryDirectory() as directory:
+            temporary = Path(directory); region = temporary / "content/regions/demo"
+            external_runtime = temporary / "private-runtime"
+            with patch.object(manage, "RUNTIME_ROOT", external_runtime):
+                self.assertEqual(manage.runtime_manifest(region), external_runtime / "demo/publication.json")
+            with patch.dict(os.environ, {"RMF_RUNTIME_ROOT": str(external_runtime)}):
+                self.assertEqual(serve.runtime_dir(region), external_runtime / "demo")
+
     def test_generic_point_layer_validation(self):
         spec = {"geometry_types": ["Point"], "required_properties": ["name"], "numeric_properties": ["score"]}
         payload = {"type": "FeatureCollection", "features": [{"type": "Feature", "geometry": {"type": "Point", "coordinates": [37.62, 55.75]}, "properties": {"name": "demo", "score": 1}}]}
@@ -33,6 +73,38 @@ class FrameworkTest(unittest.TestCase):
     def test_path_ids_reject_traversal(self):
         with self.assertRaises(ValueError):
             manage.safe_id("../region")
+
+    def test_registry_and_deployment_preflight_are_strict(self):
+        with tempfile.TemporaryDirectory() as directory:
+            temporary = Path(directory); regions = temporary / "regions"; regions.mkdir()
+            registry = temporary / "registry.json"
+            with patch.object(manage, "REGIONS", regions), patch.object(manage, "REGISTRY", registry), patch.object(manage, "CONTENT_ROOT", temporary):
+                registry.write_text(json.dumps({"schema_version": 1, "default_region": "missing", "regions": []}), encoding="utf-8")
+                with self.assertRaisesRegex(ValueError, "default_region"):
+                    manage.validate_registry()
+                registry.write_text(json.dumps({"schema_version": 1, "default_region": None, "regions": []}), encoding="utf-8")
+                with self.assertRaisesRegex(ValueError, "at least one region"):
+                    manage.deployment_check()
+                if os.name != "nt":
+                    target = temporary / "actual-registry.json"
+                    target.write_text(json.dumps({"schema_version": 1, "default_region": None, "regions": []}), encoding="utf-8")
+                    registry.unlink(); registry.symlink_to(target)
+                    with self.assertRaisesRegex(ValueError, "not a symlink"):
+                        manage.validate_registry()
+
+    def test_deployment_bundle_rejects_unsafe_metadata_and_contract_symlinks(self):
+        with self.assertRaisesRegex(ValueError, "Invalid file metadata"):
+            manage.validate_file_record({"path": "content/file", "bytes": True, "sha256": "0" * 64}, "content/file")
+        if os.name != "nt":
+            with tempfile.TemporaryDirectory() as directory:
+                temporary = Path(directory); region = temporary / "region"; outside = temporary / "outside"
+                region.mkdir(); outside.mkdir()
+                (region / "region.json").write_text("{}", encoding="utf-8")
+                (region / "SOURCES.md").write_text("source", encoding="utf-8")
+                (outside / "secret.env").write_text("SECRET=not-for-deployment", encoding="utf-8")
+                (region / "pipeline").symlink_to(outside, target_is_directory=True)
+                with self.assertRaisesRegex(ValueError, "directory must not be a symlink"):
+                    manage.deployment_contract_paths(region)
 
     def test_region_can_attach_external_data(self):
         with tempfile.TemporaryDirectory() as directory:
@@ -69,6 +141,48 @@ class FrameworkTest(unittest.TestCase):
                 manage.accept_data("demo")
                 manage.promote("demo")
                 self.assertEqual(json.loads(config_path.read_text(encoding="utf-8"))["lifecycle"], "production")
+                manage.deployment_check()
+                bundle = temporary / "deployment-bundle"
+                manage.build_deployment_bundle(bundle)
+                self.assertTrue((bundle / "deployment-manifest.json").is_file())
+                self.assertFalse(any((bundle / "content").rglob("*.geojson")))
+                deployment_data = temporary / "deployment-data" / "demo"
+                shutil.copytree(data, deployment_data)
+                manage.verify_deployment_bundle(bundle, temporary / "deployment-data")
+                installed = temporary / "installed-content"
+                shutil.copytree(bundle / "content", installed)
+                installed_runtime = temporary / "installed-runtime"
+                with patch.object(manage, "CONTENT_ROOT", installed), patch.object(manage, "REGIONS", installed / "regions"), patch.object(manage, "REGISTRY", installed / "registry.json"), patch.object(manage, "RUNTIME_ROOT", installed_runtime):
+                    manage.attach_data("demo", deployment_data, "symlink")
+                    manage.deployment_check()
+                draft_bundle = temporary / "draft-bundle"
+                shutil.copytree(bundle, draft_bundle)
+                draft_path = draft_bundle / "content/regions/demo/region.json"
+                draft = json.loads(draft_path.read_text(encoding="utf-8")); draft["lifecycle"] = "draft"
+                draft_path.write_text(json.dumps(draft), encoding="utf-8")
+                draft_manifest_path = draft_bundle / "deployment-manifest.json"
+                draft_manifest = json.loads(draft_manifest_path.read_text(encoding="utf-8"))
+                relative = "content/regions/demo/region.json"
+                draft_manifest["files"][relative] = manage.record(draft_path, draft_bundle)
+                draft_manifest_path.write_text(json.dumps(draft_manifest), encoding="utf-8")
+                with self.assertRaisesRegex(ValueError, "lifecycle is not production"):
+                    manage.verify_deployment_bundle(draft_bundle)
+                invalid_counts_bundle = temporary / "invalid-counts-bundle"
+                shutil.copytree(bundle, invalid_counts_bundle)
+                invalid_counts_path = invalid_counts_bundle / "deployment-manifest.json"
+                invalid_counts = json.loads(invalid_counts_path.read_text(encoding="utf-8"))
+                invalid_counts["data"]["demo"]["validation"]["unexpected_layer"] = 1
+                invalid_counts_path.write_text(json.dumps(invalid_counts), encoding="utf-8")
+                with self.assertRaisesRegex(ValueError, "Invalid validation counts"):
+                    manage.verify_deployment_bundle(invalid_counts_bundle)
+                if os.name != "nt":
+                    linked_data = temporary / "linked-deployment-data"
+                    linked_data.symlink_to(temporary / "deployment-data", target_is_directory=True)
+                    with self.assertRaisesRegex(ValueError, "data root must be a regular directory"):
+                        manage.verify_deployment_bundle(bundle, linked_data)
+                (bundle / "content/regions/demo/SOURCES.md").write_text("tampered", encoding="utf-8")
+                with self.assertRaisesRegex(ValueError, "checksum differs"):
+                    manage.verify_deployment_bundle(bundle)
                 manage.detach_data("demo")
                 self.assertTrue(data.is_dir())
 

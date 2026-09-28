@@ -16,7 +16,7 @@ def command_timeout():
  except ValueError:return 3600
 def main():
  p=argparse.ArgumentParser();p.add_argument("--region",required=True);p.add_argument("--reserved-lock",action="store_true",help=argparse.SUPPRESS);a=p.parse_args();rid=manage.safe_id(a.region,"region_id");root=manage.region_dir(rid)
- runtime=root/".runtime";runtime.mkdir(exist_ok=True);state_path=runtime/"regeneration.json";lock=runtime/".regeneration.lock"
+ runtime=manage.runtime_dir(root);runtime.mkdir(parents=True,exist_ok=True);state_path=runtime/"regeneration.json";lock=runtime/".regeneration.lock"
  if a.reserved_lock:
   if not lock.is_file():raise SystemExit("Reserved regeneration lock is missing")
  else:

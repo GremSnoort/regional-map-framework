@@ -28,6 +28,14 @@
 - интернет для Leaflet, MapLibre и векторной подложки OpenFreeMap (данные OpenStreetMap);
 - дополнительные зависимости только для конкретных региональных pipelines.
 
+Production-развёртывание на Linux описано в [DEPLOYMENT.md](DEPLOYMENT.md).
+В репозитории есть проверяемые шаблоны environment-файла, `systemd` и Nginx;
+региональные конфигурации и данные устанавливаются отдельным deployment-пакетом.
+На сервере его можно полностью вынести из Git-клона через
+`RMF_CONTENT_ROOT=/srv/regional-map-deployment`.
+Изменяемое состояние регионов аналогично выносится через
+`RMF_RUNTIME_ROOT=/var/lib/regional-map-framework/regions`.
+
 ## Быстрый старт
 
 ```bash
@@ -69,6 +77,8 @@ http://localhost:8000/?region=my_region
 После подключения framework записывает в `.runtime/publication.json` SHA-256
 всех слоёв. Если внешний snapshot изменился, `validate` завершится ошибкой. Для
 осознанного принятия новой версии выполните `accept-data`.
+При заданном `RMF_RUNTIME_ROOT` этот manifest хранится вне регионального пакета
+в `<RMF_RUNTIME_ROOT>/<region>/publication.json`.
 
 Режимы подключения: `symlink` для Linux/macOS и Windows Developer Mode,
 `junction` для обычной Windows, `copy` для переносимого локального snapshot.
@@ -231,7 +241,8 @@ RMF_ALLOW_REGENERATION=1 python3 serve.py --bind 127.0.0.1 --port 8000
 `RMF_ALLOW_REGENERATION=1`. Перегенерация требует обычного локального каталога `data/`;
 symlink на внешнее хранилище отвергается, чтобы атомарная замена не затронула
 чужой каталог. Время и результат последнего запуска находятся только в
-игнорируемом `.runtime/regeneration.json`.
+игнорируемом `.runtime/regeneration.json`. При заданном `RMF_RUNTIME_ROOT` эти
+файлы находятся в приватном внешнем runtime, а не внутри регионального пакета.
 
 `pipeline/regeneration.json` является доверенной серверной конфигурацией: его
 команды не формируются из HTTP-параметров и не должны быть доступны пользователю
@@ -254,6 +265,34 @@ python3 manage.py promote my_region
 Повышение запрещено при отсутствующих/пустых обязательных слоях, неполном
 `SOURCES.md`, шаблонном source note, несовпадении manifest или ненастроенном
 pipeline.
+
+## Deployment-пакет без данных
+
+После перевода всех регионов в `production` соберите переносимый пакет
+контрактов. Каталог назначения должен отсутствовать — существующий пакет команда
+никогда не перезаписывает:
+
+```bash
+python3 manage.py deployment-check
+python3 manage.py bundle-build --bundle-dir deployment/release/contracts
+python3 manage.py bundle-verify --bundle-dir deployment/release/contracts
+```
+
+В пакет входят `registry.json`, региональные конфигурации, документация
+источников, pipeline-файлы и `deployment-manifest.json`. GeoJSON, source inputs,
+кэши и outputs не копируются. Manifest содержит SHA-256 и размер каждого
+контракта, а также ожидаемые SHA-256 всех отдельных файлов данных.
+
+Если данные подготовлены в структуре `<data-root>/<region>/<file>.geojson`, их
+можно проверить перед отправкой:
+
+```bash
+python3 manage.py bundle-verify \
+  --bundle-dir deployment/release/contracts \
+  --data-dir deployment/release/data
+```
+
+Каталог `deployment/` игнорируется Git.
 
 ## Что разрешено коммитить
 
@@ -279,6 +318,9 @@ pipeline outputs, кэши и документы без права распро�
 | `validate` | Проверить конфигурацию и данные региона |
 | `doctor` | Показать полный список препятствий production |
 | `validate-all` | Проверить все зарегистрированные регионы |
+| `deployment-check` | Fail-fast проверка непустого production deployment-пакета |
+| `bundle-build` | Собрать проверяемый пакет контрактов без региональных данных |
+| `bundle-verify` | Проверить контракты и опционально отдельный каталог данных |
 | `build` | Выполнить региональный pipeline и опубликовать результаты |
 | `sync` | Опубликовать уже проверенные outputs без пересчёта |
 | `promote` | Транзакционно перевести готовый draft в production |

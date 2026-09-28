@@ -1,0 +1,38 @@
+[Unit]
+Description=Regional Map Framework authenticated map server
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=regional-map
+Group=regional-map
+WorkingDirectory=/opt/regional-map-framework
+EnvironmentFile=/etc/regional-map-framework.env
+ExecStartPre=/usr/bin/python3 /opt/regional-map-framework/manage.py deployment-check
+ExecStart=/usr/bin/python3 /opt/regional-map-framework/serve.py --bind 127.0.0.1 --port 8000
+Restart=on-failure
+RestartSec=5s
+TimeoutStopSec=20s
+KillSignal=SIGINT
+UMask=0077
+
+# The code and externally attached datasets are read-only in the default
+# deployment. StateDirectory creates the only writable production directory.
+StateDirectory=regional-map-framework
+StateDirectoryMode=0700
+ProtectSystem=strict
+ProtectHome=true
+PrivateTmp=true
+PrivateDevices=true
+NoNewPrivileges=true
+ProtectKernelTunables=true
+ProtectKernelModules=true
+ProtectControlGroups=true
+RestrictSUIDSGID=true
+LockPersonality=true
+RestrictAddressFamilies=AF_UNIX AF_INET AF_INET6
+ReadWritePaths=/var/lib/regional-map-framework
+
+[Install]
+WantedBy=multi-user.target
