@@ -31,8 +31,8 @@ only files declared by registered region contracts.
 
 ## 1. Prepare the host
 
-Install Python, Git, Nginx and an ACME client using the distribution packages.
-Create a locked, unprivileged service account:
+Install Python with its `venv` module, Git, Nginx and an ACME client using the
+distribution packages. Create a locked, unprivileged service account:
 
 ```bash
 sudo useradd --system --home /var/lib/regional-map-framework \
@@ -66,9 +66,11 @@ python3 pipeline_core/selftest.py
 python3 manage.py validate-all --allow-missing-data
 ```
 
-The web server itself uses only the Python standard library. Install
-`pipeline_core/requirements-lock.txt` in a dedicated virtual environment only
-when the deployed regional pipelines actually require those dependencies.
+The deployment gateway creates a root-owned `.venv` for every release from
+`pipeline_core/requirements-lock.txt`. Package installation runs as the
+unprivileged `regional-map` account, accepts binary wheels only, and the
+resulting environment is made read-only before validation. The service and all
+release checks use that same environment, avoiding a CI/VPS dependency split.
 
 ## 3. Install the regional deployment package
 
@@ -241,9 +243,10 @@ sudo systemctl status regional-map-framework
 curl --fail --silent http://127.0.0.1:8000/healthz
 ```
 
-The default unit makes the active release and datasets read-only. This is intentional
-for the initial deployment where `RMF_ALLOW_REGENERATION=0`. Before every start
-it runs `deployment-check` as the same unprivileged service account; invalid or
+The default unit makes the active release, its virtual environment and datasets
+read-only. This is intentional for the initial deployment where
+`RMF_ALLOW_REGENERATION=0`. Before every start it runs `deployment-check` with
+the release Python as the same unprivileged service account; invalid or
 unreadable content prevents the HTTP server from starting.
 
 ## 6. Configure Nginx and HTTPS

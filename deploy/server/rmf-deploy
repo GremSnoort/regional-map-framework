@@ -10,6 +10,7 @@ readonly content_root="/srv/regional-map-deployment"
 readonly runtime_root="/var/lib/regional-map-framework/regions"
 readonly service_name="regional-map-framework.service"
 readonly health_url="http://127.0.0.1:8000/healthz"
+readonly requirements_name="pipeline_core/requirements-lock.txt"
 
 fail() { echo "DEPLOY ERROR: $*" >&2; exit 1; }
 
@@ -24,9 +25,13 @@ exec 9>/run/lock/regional-map-framework-deploy.lock
 /usr/bin/install -d -o root -g root -m 0755 "$application_root" "$releases_root"
 readonly target="$releases_root/$commit_sha"
 stage=""
+venv_stage=""
 cleanup() {
   if [[ -n "$stage" && -d "$stage" ]]; then
     /usr/bin/rm -rf -- "$stage"
+  fi
+  if [[ -n "$venv_stage" && -d "$venv_stage" ]]; then
+    /usr/bin/rm -rf -- "$venv_stage"
   fi
 }
 trap cleanup EXIT
@@ -40,27 +45,59 @@ if [[ ! -d "$target" ]]; then
   /usr/bin/git -C "$stage" checkout --quiet --detach "$commit_sha"
   [[ "$(/usr/bin/git -C "$stage" rev-parse HEAD)" == "$commit_sha" ]] || fail "checked out commit differs"
   [[ -z "$(/usr/bin/find "$stage" -path "$stage/.git" -prune -o -type l -print -quit)" ]] || fail "release contains symlinks"
+  [[ ! -e "$stage/.venv" ]] || fail "repository must not contain .venv"
   /usr/bin/chown -R root:root "$stage"
-  /usr/bin/chmod -R go-w "$stage"
+  /usr/bin/chmod -R u=rwX,go=rX "$stage"
   /usr/bin/mv "$stage" "$target"
   stage=""
 fi
 
 [[ "$(/usr/bin/git -C "$target" rev-parse HEAD)" == "$commit_sha" ]] || fail "stored release differs from requested commit"
-[[ -z "$(/usr/bin/find "$target" -path "$target/.git" -prune -o -type l -print -quit)" ]] || fail "stored release contains symlinks"
+[[ -z "$(/usr/bin/find "$target" \( -path "$target/.git" -o -path "$target/.venv" \) -prune -o -type l -print -quit)" ]] || fail "stored release contains unmanaged symlinks"
+[[ -f "$target/$requirements_name" ]] || fail "requirements lock is missing"
+
+readonly python_version="$(/usr/bin/python3 -c 'import sys; print(f"{sys.version_info.major}.{sys.version_info.minor}")')"
+readonly requirements_sha="$(/usr/bin/sha256sum "$target/$requirements_name" | /usr/bin/cut -d' ' -f1)"
+readonly venv_fingerprint="python-${python_version}:${requirements_sha}"
+readonly venv_marker="$target/.venv/.rmf-requirements"
+
+if [[ ! -f "$venv_marker" || "$(/usr/bin/head -n 1 "$venv_marker" 2>/dev/null || true)" != "$venv_fingerprint" ]]; then
+  [[ ! -L "$target/.venv" ]] || fail "release virtual environment must not be a symlink"
+  /usr/bin/rm -rf -- "$target/.venv"
+  venv_stage="$(/usr/bin/mktemp -d "$releases_root/.venv-${commit_sha}.XXXXXXXX")"
+  /usr/bin/chown regional-map:regional-map "$venv_stage"
+  /usr/bin/chmod 0750 "$venv_stage"
+  /usr/sbin/runuser -u regional-map -- /usr/bin/env PIP_NO_CACHE_DIR=1 \
+    /usr/bin/python3 -m venv "$venv_stage"
+  /usr/sbin/runuser -u regional-map -- /usr/bin/env PIP_NO_CACHE_DIR=1 \
+    "$venv_stage/bin/python" -m pip install --disable-pip-version-check --no-input \
+      --only-binary=:all: -r "$target/$requirements_name"
+  /usr/bin/printf '%s\n' "$venv_fingerprint" > "$venv_stage/.rmf-requirements"
+  /usr/bin/chown -R root:root "$venv_stage"
+  /usr/bin/chmod -R u=rwX,go=rX "$venv_stage"
+  /usr/bin/mv "$venv_stage" "$target/.venv"
+  venv_stage=""
+fi
+
+/usr/bin/chown -R root:root "$target"
+/usr/bin/chmod -R u=rwX,go=rX "$target"
+readonly release_python="$target/.venv/bin/python"
+[[ -x "$release_python" ]] || fail "release virtual environment is incomplete"
+
+/usr/sbin/runuser -u regional-map -- /usr/bin/env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH="$target" \
+  "$release_python" "$target/manage.py" verify-core
 /usr/sbin/runuser -u regional-map -- /usr/bin/env PYTHONDONTWRITEBYTECODE=1 \
-  /usr/bin/python3 "$target/manage.py" verify-core
-/usr/sbin/runuser -u regional-map -- /usr/bin/env PYTHONDONTWRITEBYTECODE=1 \
-  /usr/bin/python3 -m unittest discover -s "$target/tests" -t "$target"
-/usr/sbin/runuser -u regional-map -- /usr/bin/env PYTHONDONTWRITEBYTECODE=1 \
-  /usr/bin/python3 "$target/pipeline_core/selftest.py"
-/usr/sbin/runuser -u regional-map -- /usr/bin/env PYTHONDONTWRITEBYTECODE=1 \
-  /usr/bin/python3 "$target/manage.py" validate-all --allow-missing-data
+  PYTHONPATH="$target" "$release_python" -m unittest discover -s "$target/tests"
+/usr/sbin/runuser -u regional-map -- /usr/bin/env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH="$target" \
+  "$release_python" "$target/pipeline_core/selftest.py"
+/usr/sbin/runuser -u regional-map -- /usr/bin/env PYTHONDONTWRITEBYTECODE=1 PYTHONPATH="$target" \
+  "$release_python" "$target/manage.py" validate-all --allow-missing-data
 /usr/sbin/runuser -u regional-map -- /usr/bin/env \
   PYTHONDONTWRITEBYTECODE=1 \
+  PYTHONPATH="$target" \
   RMF_CONTENT_ROOT="$content_root" \
   RMF_RUNTIME_ROOT="$runtime_root" \
-  /usr/bin/python3 "$target/manage.py" deployment-check
+  "$release_python" "$target/manage.py" deployment-check
 
 previous=""
 if [[ -L "$current_link" ]]; then

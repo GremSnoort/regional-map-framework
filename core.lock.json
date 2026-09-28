@@ -29,8 +29,8 @@
     },
     "DEPLOYMENT.md": {
       "path": "DEPLOYMENT.md",
-      "bytes": 14443,
-      "sha256": "59ad79e743881ca289f5a2d944a4fa0031d45c613070f6814c26af6864f05c13"
+      "bytes": 14671,
+      "sha256": "9ba8e48411f1e5b83a31ac172309e0d55efbec6e6bf51e12cebbb1d47c7e085b"
     },
     "core/map.js": {
       "path": "core/map.js",
@@ -59,8 +59,8 @@
     },
     "deploy/systemd/regional-map-framework.service": {
       "path": "deploy/systemd/regional-map-framework.service",
-      "bytes": 1123,
-      "sha256": "05e1542c81df9cc34e9c37db3ba93c15faa3fbab888a0aa9c87bbecb5d74869f"
+      "bytes": 1195,
+      "sha256": "8c4dff71109595509e5eb7e918a56bb3e11ba033dbeae62a004bc4e4c326a783"
     },
     "deploy/nginx/regional-map-framework.conf": {
       "path": "deploy/nginx/regional-map-framework.conf",
@@ -69,8 +69,8 @@
     },
     "deploy/server/rmf-deploy": {
       "path": "deploy/server/rmf-deploy",
-      "bytes": 4052,
-      "sha256": "0b850bbf87b2ee79e9ab2f6b3e4c1c117d120e2f07f32de7cb400c241cf2bf72"
+      "bytes": 6078,
+      "sha256": "3e4eeb1f826249e4093ff83416388d1b46f8e73a8a957e061300fbc44c966a81"
     },
     "deploy/server/rmf-deploy-gateway": {
       "path": "deploy/server/rmf-deploy-gateway",
