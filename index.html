@@ -5,14 +5,17 @@
   <meta name="viewport" content="width=device-width,initial-scale=1">
   <title>Региональная аналитическая карта</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@6.3.0/dist/maplibre-gl.css">
   <link rel="stylesheet" href="core/map.css">
 </head>
 <body>
   <div id="map"></div>
   <section class="title" id="title"><h1>Загрузка карты…</h1></section>
   <section class="statusbox" id="status"><b>Слои данных</b><br>Проверка регионального пакета…</section>
+  <section class="regeneration" id="regeneration" hidden></section>
   <section class="sourcebox" id="sources"></section>
-  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <section class="sessionbox"><span id="session-user"></span><form method="post" action="/auth/logout"><button type="submit">Выйти</button></form></section>
+  <script type="importmap">{"imports":{"leaflet":"https://unpkg.com/leaflet@1.9.4/dist/leaflet-src.esm.js","maplibre-gl":"https://unpkg.com/maplibre-gl@6.3.0/dist/maplibre-gl.mjs"}}</script>
   <script type="module" src="core/map.js"></script>
 </body>
 </html>

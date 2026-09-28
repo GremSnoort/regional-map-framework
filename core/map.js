@@ -1,3 +1,6 @@
+import * as L from 'leaflet';
+import {maplibreGL} from 'https://unpkg.com/@maplibre/maplibre-gl-leaflet@0.1.4/dist/leaflet-maplibre-gl.mjs';
+
 const esc=value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
 const safeUrl=value=>{try{const url=new URL(String(value),location.href);return ['http:','https:'].includes(url.protocol)?url.href:null}catch{return null}};
 const valueAt=(properties,path)=>String(path||'name').split('.').reduce((value,key)=>value?.[key],properties);
@@ -13,10 +16,18 @@ const config=await fetch(`${base}/region.json`).then(response=>response.ok?respo
 document.title=config.page_title;
 document.getElementById('title').innerHTML=`<h1>${esc(config.title)}</h1>${config.lifecycle==='draft'?'<p class="bad"><b>Черновик:</b> пакет ещё не прошёл production-проверку.</p>':''}<p>${esc(config.subtitle||'')}</p>`;
 document.getElementById('sources').textContent=config.source_note||'Источники не описаны.';
+fetch('/api/session',{cache:'no-store'}).then(response=>response.ok?response.json():null).then(session=>{if(session)document.getElementById('session-user').textContent=session.username});
+const regeneration=document.getElementById('regeneration');
+const regenerationUrl=`/api/regeneration?region=${encodeURIComponent(regionId)}`;
+const regenerationTime=value=>value?new Date(value).toLocaleString('ru-RU'):'ещё не выполнялась';
+let regenerationRequested=false;
+async function refreshRegeneration(){try{const response=await fetch(regenerationUrl,{cache:'no-store'});if(!response.ok)return;const state=await response.json();if(!state.enabled)return;if(regenerationRequested&&state.status==='succeeded'){location.reload();return}if(state.status==='failed')regenerationRequested=false;regeneration.hidden=false;const running=state.status==='running';regeneration.innerHTML=`<b>Перегенерировать публичные данные</b><br><span>Последняя успешная генерация: ${esc(regenerationTime(state.last_success_at))}</span>${state.status==='failed'?`<br><span class="bad">Ошибка: ${esc(state.error||'неизвестно')}</span>`:''}<br><button type="button" ${running?'disabled':''}>${running?'Генерация выполняется…':'Перегенерировать'}</button><br><small>Не чаще одного раза в ${Math.ceil(Number(state.min_interval_seconds||300)/60)} мин.</small>`;regeneration.querySelector('button')?.addEventListener('click',async()=>{const button=regeneration.querySelector('button');button.disabled=true;const result=await fetch(regenerationUrl,{method:'POST'});if(result.status===429){const body=await result.json();alert(`Повторный запуск будет доступен через ${body.retry_after_seconds} сек.`)}else if(!result.ok){const body=await result.json().catch(()=>({}));alert(body.error||`HTTP ${result.status}`)}else regenerationRequested=true;await refreshRegeneration()});if(running)setTimeout(refreshRegeneration,3000)}catch{regeneration.hidden=true}}
+refreshRegeneration();
 
 const map=L.map('map',{zoomControl:false,scrollWheelZoom:true,doubleClickZoom:true,touchZoom:true,boxZoom:true,keyboard:true,zoomSnap:.25,zoomDelta:.5,minZoom:config.view.min_zoom,maxZoom:config.view.max_zoom}).setView(config.view.center,config.view.zoom);
 L.control.zoom({position:'bottomleft',zoomInTitle:'Приблизить',zoomOutTitle:'Отдалить'}).addTo(map);
-const osm=L.tileLayer('https://tile.openstreetmap.org/{z}/{x}/{y}.png',{maxZoom:19,attribution:'© OpenStreetMap contributors'}).addTo(map);
+const basemap=maplibreGL({style:'https://tiles.openfreemap.org/styles/positron'}).addTo(map);
+const vectorCanvas=L.canvas({pane:'overlayPane',padding:.35,tolerance:3});
 const overlays={},status=[],runtime=[];
 const palette=['#2563eb','#dc2626','#16a34a','#9333ea','#ea580c','#0891b2','#be123c','#4f46e5'];
 const load=async spec=>{const response=await fetch(`${base}/${spec.file}`);if(!response.ok)throw new Error(`${spec.file}: HTTP ${response.status}`);return response.json()};
@@ -40,14 +51,12 @@ const pointLayer=(feature,latlng,spec,index)=>{
   return L.circleMarker(latlng,{radius,color:style.stroke||color,weight:Number(style.weight??1.2),fillColor:color,fillOpacity:Number(style.fill_opacity??.82)});
 };
 
-const specs=Object.entries(config.layers||{}).sort((a,b)=>Number(a[1].order??0)-Number(b[1].order??0));
+const specs=Object.entries(config.layers||{}).sort((a,b)=>Number(a[1].z_index??a[1].order??0)-Number(b[1].z_index??b[1].order??0));
 for(let index=0;index<specs.length;index++){
   const [id,spec]=specs[index];
   try{
     const data=await load(spec);
-    const paneName=`rmf-${id}`,pane=map.createPane(paneName);pane.style.zIndex=String(spec.z_index??(400+index));if(spec.interactive===false)pane.style.pointerEvents='none';
-    const layerCanvas=L.canvas({pane:paneName,padding:.35,tolerance:3});
-    const layer=L.geoJSON(data,{pane:paneName,renderer:layerCanvas,interactive:spec.interactive!==false,style:feature=>({...featureStyle(feature,spec,index),pane:paneName,renderer:layerCanvas}),pointToLayer:(feature,latlng)=>{const point=pointLayer(feature,latlng,spec,index);point.options.pane=paneName;point.options.renderer=layerCanvas;return point},onEachFeature:(feature,item)=>{const properties=feature.properties||{},title=featureTitle(feature,spec),body=popupHtml(properties,spec),label=valueAt(properties,spec.label_field)||title,permanent=Boolean(spec.label_field)&&(!spec.label_min_field||numeric(properties,spec.label_min_field)>=Number(spec.label_min_value??0));item.bindTooltip(esc(label),permanent?{permanent:true,interactive:true,direction:spec.label_direction||'right',className:'feature-label'}:{sticky:true});if(permanent)item.getTooltip()?.on('click',()=>item.openPopup());if(body)item.bindPopup(`<b>${esc(title)}</b><br>${body}`)}});
+    const layer=L.geoJSON(data,{renderer:vectorCanvas,interactive:spec.interactive!==false,style:feature=>({...featureStyle(feature,spec,index),pane:'overlayPane',renderer:vectorCanvas}),pointToLayer:(feature,latlng)=>{const point=pointLayer(feature,latlng,spec,index);point.options.pane='overlayPane';point.options.renderer=vectorCanvas;return point},onEachFeature:(feature,item)=>{const properties=feature.properties||{},title=featureTitle(feature,spec),body=popupHtml(properties,spec),label=valueAt(properties,spec.label_field)||title,permanent=Boolean(spec.label_field)&&(!spec.label_min_field||numeric(properties,spec.label_min_field)>=Number(spec.label_min_value??0));item.bindTooltip(esc(label),permanent?{permanent:true,interactive:true,direction:spec.label_direction||'right',className:'feature-label'}:{sticky:true});if(permanent)item.getTooltip()?.on('click',()=>item.openPopup());if(body)item.bindPopup(`<b>${esc(title)}</b><br>${body}`)}});
     const state={id,spec,data,layer,index,suppressed:spec.default_visible===false};runtime.push(state);overlays[spec.label]=layer;
     if(!state.suppressed&&(!spec.min_zoom||map.getZoom()>=spec.min_zoom)&&(!spec.max_zoom||map.getZoom()<=spec.max_zoom))layer.addTo(map);
     if(spec.fit_bounds&&layer.getBounds().isValid())map.fitBounds(layer.getBounds(),{padding:[15,15],animate:false});
@@ -56,11 +65,11 @@ for(let index=0;index<specs.length;index++){
 }
 
 const inZoomRange=state=>(!state.spec.min_zoom||map.getZoom()>=state.spec.min_zoom)&&(!state.spec.max_zoom||map.getZoom()<=state.spec.max_zoom);
-function syncZoomLayers(){for(const state of runtime){const visible=inZoomRange(state);if(visible&&!state.suppressed&&!map.hasLayer(state.layer))state.layer.addTo(map);if(!visible&&map.hasLayer(state.layer))map.removeLayer(state.layer);if(visible&&state.layer.setStyle)state.layer.setStyle(feature=>({...featureStyle(feature,state.spec,state.index),pane:`rmf-${state.id}`,renderer:state.layer.options?.renderer}))}}
+function syncZoomLayers(){for(const state of runtime){const visible=inZoomRange(state);if(visible&&!state.suppressed&&!map.hasLayer(state.layer))state.layer.addTo(map);if(!visible&&map.hasLayer(state.layer))map.removeLayer(state.layer);if(visible&&state.layer.setStyle)state.layer.setStyle(feature=>({...featureStyle(feature,state.spec,state.index),pane:'overlayPane',renderer:vectorCanvas}))}for(const state of runtime){if(map.hasLayer(state.layer)&&state.layer.bringToFront)state.layer.bringToFront()}}
 map.on('zoomend',syncZoomLayers);
 map.on('overlayremove',event=>{const state=runtime.find(item=>item.layer===event.layer);if(state&&inZoomRange(state))state.suppressed=true});
 map.on('overlayadd',event=>{const state=runtime.find(item=>item.layer===event.layer);if(state){state.suppressed=false;syncZoomLayers()}});
-L.control.layers({'OpenStreetMap (онлайн)':osm},overlays,{collapsed:false,position:'topright'}).addTo(map);syncZoomLayers();
+L.control.layers({'OpenFreeMap · Positron':basemap},overlays,{collapsed:false,position:'topright'}).addTo(map);syncZoomLayers();
 
 function relatedBounds(feature,spec){
   const table=spec.table||{},joinValue=valueAt(feature.properties||{},table.related_value_field||table.join_field||'name');

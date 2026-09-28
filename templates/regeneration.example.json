@@ -1,0 +1,10 @@
+{
+  "schema_version": 1,
+  "region_id": "example",
+  "enabled": true,
+  "min_interval_seconds": 300,
+  "outputs": ["major_roads.geojson"],
+  "commands": [
+    {"name": "Обновить публичные дороги", "command": ["{python}", "pipeline/regenerate_public_roads.py"]}
+  ]
+}

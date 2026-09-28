@@ -14,6 +14,8 @@ import sys
 import tempfile
 from pathlib import Path
 
+import auth
+
 ROOT = Path(__file__).resolve().parent
 REGIONS = ROOT / "regions"
 REGISTRY = ROOT / "registry.json"
@@ -21,14 +23,14 @@ CORE_LOCK = ROOT / "core.lock.json"
 CORE_VERSION = "2.1.0"
 GEOMETRY_TYPES = {"Point", "MultiPoint", "LineString", "MultiLineString", "Polygon", "MultiPolygon"}
 CORE_FILES = (
-    "index.html", "manage.py", "REGION_CONTRACT.md", "core/map.js", "core/map.css",
-    "pipeline_core/runner.py", "pipeline_core/build_roads.py", "pipeline_core/build_adaptive_density.py", "pipeline_core/normalize_layer.py",
+    "index.html", "manage.py", "serve.py", "auth.py", "REGION_CONTRACT.md", "core/map.js", "core/map.css",
+    "pipeline_core/runner.py", "pipeline_core/regeneration.py", "pipeline_core/build_roads.py", "pipeline_core/build_adaptive_density.py", "pipeline_core/normalize_layer.py",
     "pipeline_core/requirements-lock.txt", "pipeline_core/requirements-minimal-lock.txt",
     "pipeline_core/selftest.py", "schemas/region.schema.json", "schemas/pipeline.schema.json",
-    "schemas/analytics-plugin.schema.json",
+    "schemas/analytics-plugin.schema.json", "schemas/regeneration.schema.json",
     "templates/layer.example.json", "templates/region.example.json",
     "templates/standard_layer.example.json", "templates/analytics-plugin.example.json",
-    "templates/adaptive-density.example.json",
+    "templates/adaptive-density.example.json", "templates/regeneration.example.json",
 )
 
 
@@ -158,6 +160,8 @@ def validate_config(config: dict, region_id: str) -> None:
         if not isinstance(spec.get("popup_fields", []), list) or not isinstance(spec.get("table", {}), dict) or not isinstance(spec.get("style", {}), dict):
             raise ValueError(f"Layer {layer_id} display contract is malformed")
         style = spec.get("style", {})
+        if "regenerable" in spec and not isinstance(spec["regenerable"], bool):
+            raise ValueError(f"Layer {layer_id}: regenerable must be boolean")
         for key in ("fill_max_zoom", "fill_opacity", "fill_opacity_above_max"):
             if key in style and (not isinstance(style[key], (int, float)) or isinstance(style[key], bool)):
                 raise ValueError(f"Layer {layer_id}: style.{key} must be numeric")
@@ -166,6 +170,37 @@ def validate_config(config: dict, region_id: str) -> None:
                 raise ValueError(f"Layer {layer_id}: style.{key} must be between 0 and 1")
     if len(files) != len(set(files)):
         raise ValueError("Every layer must use a unique file")
+
+
+def validate_regeneration(root: Path, config: dict) -> int:
+    path = root / "pipeline" / "regeneration.json"
+    if not path.is_file():
+        return 0
+    spec = read_json(path)
+    required = {"schema_version", "region_id", "enabled", "min_interval_seconds", "outputs", "commands"}
+    if set(spec) != required:
+        raise ValueError(f"Regeneration fields differ from schema: missing={sorted(required - set(spec))}, unexpected={sorted(set(spec) - required)}")
+    if spec.get("schema_version") != 1 or spec.get("region_id") != config["region_id"] or not isinstance(spec.get("enabled"), bool):
+        raise ValueError("Invalid regeneration identity or enabled flag")
+    interval = spec.get("min_interval_seconds", 300)
+    if not isinstance(interval, int) or isinstance(interval, bool) or interval < 300:
+        raise ValueError("Regeneration min_interval_seconds must be an integer >= 300")
+    outputs = spec.get("outputs")
+    if not isinstance(outputs, list) or not outputs or not all(isinstance(item, str) and item for item in outputs) or len(outputs) != len(set(outputs)):
+        raise ValueError("Regeneration outputs must be a non-empty unique string list")
+    allowed = {str(data_relative(layer["file"])) for layer in config["layers"].values() if layer.get("regenerable") is True}
+    if not set(outputs) <= allowed:
+        raise ValueError("Every regeneration output must belong to a regenerable layer")
+    commands = spec.get("commands")
+    if not isinstance(commands, list) or not commands:
+        raise ValueError("Regeneration commands must be a non-empty list")
+    for step in commands:
+        if not isinstance(step, dict) or not set(step) <= {"name", "cwd", "command"} or "command" not in step or ("name" in step and not isinstance(step["name"], str)) or not isinstance(step.get("cwd", "."), str) or not isinstance(step.get("command"), list) or not step["command"] or not all(isinstance(item, str) and item for item in step["command"]):
+            raise ValueError("Invalid regeneration command")
+        cwd = (root / step.get("cwd", ".")).resolve()
+        if cwd != root and root not in cwd.parents:
+            raise ValueError("Invalid regeneration working directory")
+    return len(outputs)
 
 
 def valid_coordinates(value) -> bool:
@@ -249,7 +284,7 @@ def validate_provenance(root: Path, config: dict, records: dict, require: bool) 
 
 
 def inspect_region(region_id: str, allow_missing: bool = False, require_provenance: bool = True, emit: bool = True) -> dict:
-    root = region_dir(region_id); config = read_json(root / "region.json"); validate_config(config, region_id)
+    root = region_dir(region_id); config = read_json(root / "region.json"); validate_config(config, region_id); validate_regeneration(root, config)
     counts, records, missing = layer_records(root, config)
     if missing and not allow_missing:
         raise ValueError(f"Missing data files: {missing}. Attach data or build the pipeline first.")
@@ -454,13 +489,21 @@ def validate_all(allow_missing: bool) -> None:
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("command", choices=("init-region", "add-layer", "attach-data", "accept-data", "detach-data", "build", "sync", "validate", "validate-all", "doctor", "promote", "self-test", "verify-core")); parser.add_argument("region", nargs="?")
+    parser.add_argument("command", choices=("init-region", "add-layer", "attach-data", "accept-data", "detach-data", "build", "sync", "validate", "validate-all", "doctor", "promote", "self-test", "verify-core", "auth-set-user", "auth-delete-user", "auth-list-users")); parser.add_argument("region", nargs="?")
     parser.add_argument("--title"); parser.add_argument("--center-lat", type=float); parser.add_argument("--center-lon", type=float); parser.add_argument("--data-mode", choices=("external", "pipeline"), default="external")
     parser.add_argument("--layer-id"); parser.add_argument("--file"); parser.add_argument("--label"); parser.add_argument("--geometry", action="append", default=[]); parser.add_argument("--renderer", choices=("auto", "points", "lines", "polygons", "choropleth", "density", "ranking"), default="auto"); parser.add_argument("--required", action="store_true")
     parser.add_argument("--data-dir", type=Path); parser.add_argument("--attach-mode", choices=("symlink", "junction", "copy"), default="symlink"); parser.add_argument("--allow-missing-data", action="store_true"); parser.add_argument("--write-core-lock", action="store_true")
     args = parser.parse_args()
     if args.command == "verify-core": verify_core(args.write_core_lock); return
     verify_core()
+    if args.command == "auth-list-users":
+        for username in auth.list_users(): print(username)
+        return
+    if args.command in {"auth-set-user", "auth-delete-user"}:
+        if not args.region: parser.error("username is required")
+        if args.command == "auth-set-user": auth.set_user_prompt(args.region)
+        else: auth.delete_user(args.region)
+        return
     if args.command == "self-test": subprocess.run([sys.executable, str(ROOT / "pipeline_core" / "selftest.py")], check=True); return
     if args.command == "validate-all": validate_all(args.allow_missing_data); return
     if not args.region: parser.error("region is required")

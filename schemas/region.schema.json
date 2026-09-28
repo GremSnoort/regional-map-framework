@@ -38,6 +38,7 @@
           "numeric_properties": {"type": "array", "uniqueItems": true, "items": {"type": "string"}},
           "unique_by": {"type": "array", "uniqueItems": true, "items": {"type": "string"}},
           "required_for_production": {"type": "boolean"},
+          "regenerable": {"type": "boolean"},
           "default_visible": {"type": "boolean"},
           "interactive": {"type": "boolean"}, "z_index": {"type": "integer"},
           "fit_bounds": {"type": "boolean"},

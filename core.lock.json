@@ -4,33 +4,48 @@
   "files": {
     "index.html": {
       "path": "index.html",
-      "bytes": 805,
-      "sha256": "8f85d26d3cde143fc53e314b24839531d1410cd69f2a7bf3f8aa27e7ac212f4f"
+      "bytes": 1242,
+      "sha256": "3c1a412bbead72baecd2a7db5f34e748b5c404b2aa838039b1173aceb50348ba"
     },
     "manage.py": {
       "path": "manage.py",
-      "bytes": 32191,
-      "sha256": "4a26bf6a28376528d070255c20332db15d4a4e7c0ab158d981643bf9a867f63c"
+      "bytes": 35203,
+      "sha256": "a8b3bdbd8fd3ccf582ad26856563e64f135342878ccd10ef4d09f605fa7ef680"
+    },
+    "serve.py": {
+      "path": "serve.py",
+      "bytes": 16770,
+      "sha256": "69d9722c4ad5a1b3fe20706e583fb68bd7ce5adb7a7619718e0f746ec4dca13e"
+    },
+    "auth.py": {
+      "path": "auth.py",
+      "bytes": 6862,
+      "sha256": "5d2c50d3c4a7fcec62d4eba79440cf8bb11da37162146e23d5fa264236eeb9e0"
     },
     "REGION_CONTRACT.md": {
       "path": "REGION_CONTRACT.md",
-      "bytes": 7041,
-      "sha256": "ec589ad49015e6ab6703a225d230e41e30982a5002a6e201dca1d048f35dc019"
+      "bytes": 9279,
+      "sha256": "672aee4be81ff5c92721b350b050d0891e764c08560c000c3ffa7699c08bd2a3"
     },
     "core/map.js": {
       "path": "core/map.js",
-      "bytes": 14608,
-      "sha256": "1ec2e0e9745f70411aa5030c37dc19fd7f4688e0df8dd391a0eb77df42374c82"
+      "bytes": 16766,
+      "sha256": "92e21e95ef29f0d7e90a58db398591ea91222e8684635c6ca1e12b10b0da0e40"
     },
     "core/map.css": {
       "path": "core/map.css",
-      "bytes": 3458,
-      "sha256": "41df214cf578dc16e25aca8d9944685973e2d3a9aa2c2ebe34da9060f2e021bc"
+      "bytes": 4305,
+      "sha256": "43a65f5f2dda14e191e41caa49258707eced9dce1abb83b3a1a496686a821900"
     },
     "pipeline_core/runner.py": {
       "path": "pipeline_core/runner.py",
       "bytes": 15839,
       "sha256": "a87b28c5ce12bf37ea3a3d6426005887eacabfff1e4721509a85c09c1ca4ae35"
+    },
+    "pipeline_core/regeneration.py": {
+      "path": "pipeline_core/regeneration.py",
+      "bytes": 5308,
+      "sha256": "2fed3e3f0fcfa96085eb7d4d069db401cf616865a5eeffc85805b17b74809fab"
     },
     "pipeline_core/build_roads.py": {
       "path": "pipeline_core/build_roads.py",
@@ -64,8 +79,8 @@
     },
     "schemas/region.schema.json": {
       "path": "schemas/region.schema.json",
-      "bytes": 3046,
-      "sha256": "edefaddc08d1823ff88977ccb76989d394f9f86f04beb8c227b8d9a9b3d58812"
+      "bytes": 3092,
+      "sha256": "d06a4e05eca972b9ccc087d0c893cbac33b0e6fe88c4a2d957b9321bb0a21e57"
     },
     "schemas/pipeline.schema.json": {
       "path": "schemas/pipeline.schema.json",
@@ -76,6 +91,11 @@
       "path": "schemas/analytics-plugin.schema.json",
       "bytes": 851,
       "sha256": "7fe3904e8703eb1894509826ab78920107c412881b1c70fbb1c958c91d94f5e9"
+    },
+    "schemas/regeneration.schema.json": {
+      "path": "schemas/regeneration.schema.json",
+      "bytes": 1070,
+      "sha256": "284b6a9f91f57ffcdc75684fefbd3c2ce7e31e8d998d915efaf4c039b25071a5"
     },
     "templates/layer.example.json": {
       "path": "templates/layer.example.json",
@@ -101,6 +121,11 @@
       "path": "templates/adaptive-density.example.json",
       "bytes": 1009,
       "sha256": "c898728a34e4b1e90f6285e061c662fcb98268e0b975f5ae272e59bacb6abb78"
+    },
+    "templates/regeneration.example.json": {
+      "path": "templates/regeneration.example.json",
+      "bytes": 290,
+      "sha256": "54aa959cf46d2bd742c8d295a98a91c97ac05ac0ed76bf58f124f40a5a75e6fe"
     }
   }
 }
