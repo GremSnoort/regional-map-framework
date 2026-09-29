@@ -26,7 +26,8 @@ CORE_LOCK = ROOT / "core.lock.json"
 CORE_VERSION = "2.1.0"
 GEOMETRY_TYPES = {"Point", "MultiPoint", "LineString", "MultiLineString", "Polygon", "MultiPolygon"}
 CORE_FILES = (
-    "index.html", "manage.py", "serve.py", "auth.py", "REGION_CONTRACT.md", "DEPLOYMENT.md", "core/map.js", "core/map.css",
+    "index.html", "map.html", "manage.py", "serve.py", "auth.py", "REGION_CONTRACT.md", "DEPLOYMENT.md",
+    "core/gallery.js", "core/gallery.css", "core/map.js", "core/map.css",
     ".github/workflows/validate.yml", ".github/workflows/deploy.yml",
     "deploy/regional-map-framework.env.example", "deploy/systemd/regional-map-framework.service", "deploy/nginx/regional-map-framework.conf",
     "deploy/server/rmf-deploy", "deploy/server/rmf-deploy-gateway",

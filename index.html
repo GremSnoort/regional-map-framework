@@ -3,19 +3,44 @@
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width,initial-scale=1">
-  <title>Региональная аналитическая карта</title>
-  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
-  <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@6.3.0/dist/maplibre-gl.css">
-  <link rel="stylesheet" href="core/map.css">
+  <title>Региональные аналитические карты</title>
+  <link rel="stylesheet" href="/core/gallery.css">
 </head>
 <body>
-  <div id="map"></div>
-  <section class="title" id="title"><h1>Загрузка карты…</h1></section>
-  <section class="statusbox" id="status"><b>Слои данных</b><br>Проверка регионального пакета…</section>
-  <section class="regeneration" id="regeneration" hidden></section>
-  <section class="sourcebox" id="sources"></section>
-  <section class="sessionbox"><span id="session-user"></span><form method="post" action="/auth/logout"><button type="submit">Выйти</button></form></section>
-  <script type="importmap">{"imports":{"leaflet":"https://unpkg.com/leaflet@1.9.4/dist/leaflet-src.esm.js","maplibre-gl":"https://unpkg.com/maplibre-gl@6.3.0/dist/maplibre-gl.mjs"}}</script>
-  <script type="module" src="core/map.js"></script>
+  <header class="site-header">
+    <a class="brand" href="/" aria-label="На главную">
+      <span class="brand-mark" aria-hidden="true">RM</span>
+      <span>Regional Map Framework</span>
+    </a>
+    <div class="session">
+      <span id="session-user"></span>
+      <form method="post" action="/auth/logout"><button type="submit">Выйти</button></form>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <p class="eyebrow">Аналитическая география</p>
+      <h1>Региональные карты</h1>
+      <p class="lead">Выберите регион, чтобы открыть интерактивную карту с подключёнными слоями, аналитикой и реестрами объектов.</p>
+    </section>
+
+    <section aria-labelledby="regions-title">
+      <div class="section-heading">
+        <div>
+          <p class="eyebrow">Доступные проекты</p>
+          <h2 id="regions-title">Галерея регионов</h2>
+        </div>
+        <p id="region-count" class="region-count" aria-live="polite"></p>
+      </div>
+      <div id="gallery-status" class="gallery-status">Загрузка регионов…</div>
+      <div id="region-gallery" class="region-gallery" aria-live="polite"></div>
+    </section>
+  </main>
+
+  <footer>
+    <span>Данные и выводы каждой карты зависят от дат снимков и качества источников.</span>
+  </footer>
+  <script type="module" src="/core/gallery.js"></script>
 </body>
 </html>

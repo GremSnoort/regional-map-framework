@@ -71,10 +71,17 @@ python3 manage.py auth-set-user map_admin
 python3 serve.py --bind 127.0.0.1 --port 8000
 ```
 
-Карта:
+После входа открывается главная страница с галереей всех регионов из
+`registry.json`:
 
 ```text
-http://localhost:8000/?region=my_region
+http://localhost:8000/
+```
+
+Прямая ссылка на карту:
+
+```text
+http://localhost:8000/map.html?region=my_region
 ```
 
 После подключения framework записывает в `.runtime/publication.json` SHA-256
@@ -216,8 +223,9 @@ export RMF_AUTH_FILE=/srv/regional-map-secrets/users.json
 хеши и секрет подписи сессий, но не должен попадать в Git или публичный artifact.
 
 После входа HTTP-сервер также применяет строгий белый список файлов. Он отдаёт
-только `index.html`, ресурсы `core/`, `registry.json`, `region.json`
-зарегистрированных регионов и GeoJSON, явно указанные слоями соответствующего
+только страницы галереи и карты (`index.html`, `map.html`), объявленные
+клиентские ресурсы `core/`, `registry.json`, `region.json` зарегистрированных
+регионов и GeoJSON, явно указанные слоями соответствующего
 `region.json`. Исходный код, `.git`, `.runtime`, pipeline, `SOURCES.md` и любые
 необъявленные файлы через HTTP не публикуются. Это правило действует одинаково
 для `GET` и `HEAD`; reverse proxy не должен обходить backend и самостоятельно

@@ -4,18 +4,23 @@
   "files": {
     "index.html": {
       "path": "index.html",
-      "bytes": 1242,
-      "sha256": "3c1a412bbead72baecd2a7db5f34e748b5c404b2aa838039b1173aceb50348ba"
+      "bytes": 1864,
+      "sha256": "075de79075058b7cd3c8ef11a9f493b01d2f5fb470a555dc836f122fe7fbe0e7"
+    },
+    "map.html": {
+      "path": "map.html",
+      "bytes": 1357,
+      "sha256": "34a460408834f281ea1675cdd126c5aec1e9fdc75c9e6bed2e753d974edfd713"
     },
     "manage.py": {
       "path": "manage.py",
-      "bytes": 47590,
-      "sha256": "f19209555647b7eb64cbfefa71e01c5dc981e070289bfb31c253d53747f5b76a"
+      "bytes": 47645,
+      "sha256": "097d8182a8c9412c3a07a54915ccd4bab5bf2b0462bfd3cbad75f367716645e0"
     },
     "serve.py": {
       "path": "serve.py",
-      "bytes": 17551,
-      "sha256": "b79620e8caa10abfacbc7a4861c12dc0dbe52a8a0803e0e2ccc806ed03a831df"
+      "bytes": 17650,
+      "sha256": "536710ee57a4bf9fb9a5566b8005ee3a29ae9977d2eda7df20a58bd682edc680"
     },
     "auth.py": {
       "path": "auth.py",
@@ -32,6 +37,16 @@
       "bytes": 14671,
       "sha256": "9ba8e48411f1e5b83a31ac172309e0d55efbec6e6bf51e12cebbb1d47c7e085b"
     },
+    "core/gallery.js": {
+      "path": "core/gallery.js",
+      "bytes": 4398,
+      "sha256": "1c361bf7b1b10215b90cba41d5f9da48874e5093783afcbf23824c6acc920d37"
+    },
+    "core/gallery.css": {
+      "path": "core/gallery.css",
+      "bytes": 5105,
+      "sha256": "2b481b995e664f592caebb306901f0ef9a2a9b6c04fb9a935adbad365c06df61"
+    },
     "core/map.js": {
       "path": "core/map.js",
       "bytes": 16766,
@@ -39,18 +54,18 @@
     },
     "core/map.css": {
       "path": "core/map.css",
-      "bytes": 4305,
-      "sha256": "43a65f5f2dda14e191e41caa49258707eced9dce1abb83b3a1a496686a821900"
+      "bytes": 4657,
+      "sha256": "db3077f2bc66f0cf982b43821f98a93f80e60d4a7f9abe2926b623f011ee1378"
     },
     ".github/workflows/validate.yml": {
       "path": ".github/workflows/validate.yml",
-      "bytes": 600,
-      "sha256": "3d05728fe539430b379f9f2bff9778e7ba7c2c504a3357dbff3e96932cc239fc"
+      "bytes": 642,
+      "sha256": "8cd51b0944fd0cd4c9e7800f28f224f337af3de625b07834730a4f8398d93f85"
     },
     ".github/workflows/deploy.yml": {
       "path": ".github/workflows/deploy.yml",
-      "bytes": 2311,
-      "sha256": "b65e0b31969506fe08d47b37b5a847d1c300d1f0aeba8088e7f07bd716dec1af"
+      "bytes": 2353,
+      "sha256": "90d023c30e8d311aacae84e21bf175b5d5b60c9a60f122c552b8e1a58c22441b"
     },
     "deploy/regional-map-framework.env.example": {
       "path": "deploy/regional-map-framework.env.example",

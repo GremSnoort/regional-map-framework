@@ -41,6 +41,8 @@ class FrameworkTest(unittest.TestCase):
         self.assertIn("User=regional-map", unit)
         self.assertIn("ProtectSystem=strict", unit)
         self.assertIn("proxy_pass http://127.0.0.1:8000", nginx)
+        self.assertIn("node --check core/gallery.js", workflow)
+        self.assertIn("node --check core/map.js", workflow)
         self.assertIn("proxy_set_header X-Forwarded-For $remote_addr", nginx)
         self.assertNotRegex(nginx, r"(?m)^\s*(root|alias|try_files)\s")
         self.assertIn("workflow_dispatch:", workflow)
@@ -296,6 +298,9 @@ class FrameworkTest(unittest.TestCase):
             (project / ".runtime").mkdir()
             (project / ".git").mkdir()
             (project / "index.html").write_text("index", encoding="utf-8")
+            (project / "map.html").write_text("map page", encoding="utf-8")
+            (project / "core/gallery.js").write_text("gallery", encoding="utf-8")
+            (project / "core/gallery.css").write_text("gallery css", encoding="utf-8")
             (project / "core/map.js").write_text("map", encoding="utf-8")
             (project / "core/map.css").write_text("css", encoding="utf-8")
             registered = ["demo"]
@@ -353,7 +358,7 @@ class FrameworkTest(unittest.TestCase):
                     self.assertEqual(login.code, 303)
                     cookie = login.headers["Set-Cookie"].split(";", 1)[0]
 
-                    allowed = ["/", "/index.html", "/core/map.js", "/core/map.css", "/registry.json", "/regions/demo/region.json", "/regions/demo/data/objects.geojson"]
+                    allowed = ["/", "/index.html", "/map.html", "/core/gallery.js", "/core/gallery.css", "/core/map.js", "/core/map.css", "/registry.json", "/regions/demo/region.json", "/regions/demo/data/objects.geojson"]
                     if os.name != "nt":
                         allowed.extend(["/regions/linked/region.json", "/regions/linked/data/objects.geojson"])
                     for path in allowed:
@@ -398,6 +403,12 @@ class FrameworkTest(unittest.TestCase):
 
     def test_frontend_has_generic_advanced_renderers(self):
         source = (manage.ROOT / "core" / "map.js").read_text(encoding="utf-8")
+        gallery = (manage.ROOT / "core" / "gallery.js").read_text(encoding="utf-8")
+        homepage = (manage.ROOT / "index.html").read_text(encoding="utf-8")
+        map_page = (manage.ROOT / "map.html").read_text(encoding="utf-8")
+        self.assertIn("region-gallery", homepage)
+        self.assertIn("/map.html?region=", gallery)
+        self.assertIn('class="home-link" href="/"', map_page)
         for contract in ("L.canvas(", "buildTable", "relatedBounds", "syncZoomLayers", "fill_max_zoom", "refreshRegeneration", "regenerationRequested", "location.reload()", "maplibreGL", "tiles.openfreemap.org/styles/positron", "animate:false"):
             self.assertIn(contract, source)
         self.assertNotIn("tile.openstreetmap.org", source)

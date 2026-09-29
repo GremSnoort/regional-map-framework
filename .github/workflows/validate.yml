@@ -17,4 +17,5 @@ jobs:
       - run: python manage.py self-test
       - run: python manage.py verify-core
       - run: python manage.py validate-all --allow-missing-data
+      - run: node --check core/gallery.js
       - run: node --check core/map.js
