@@ -96,7 +96,48 @@ function buildTable(state,tableIndex){
 }
 runtime.filter(state=>state.spec.table?.enabled).forEach(buildTable);
 
-const legend=L.control({position:'bottomright'});legend.onAdd=()=>{const element=L.DomUtil.create('div','legend');let html='';for(const state of runtime){const spec=state.spec;if(spec.legend===false)continue;if(spec.categories&&Object.keys(spec.categories).length){html+=`<section><b>${esc(spec.legend_title||spec.label)}</b><br>${Object.entries(spec.categories).map(([value,item])=>`<i style="background:${esc(item.color)}"></i>${esc(item.label||value)}<br>`).join('')}</section>`}else if(Array.isArray(spec.bins)&&spec.bins.length){html+=`<section><b>${esc(spec.legend_title||spec.label)}</b><br>${spec.bins.map(bin=>`<i style="background:${esc(bin.color)}"></i>${esc(bin.label??(bin.max===null?'и выше':`< ${bin.max}`))}<br>`).join('')}</section>`}else if(spec.legend_symbol!==false){const color=spec.style?.color||palette[state.index%palette.length];html+=`<div><i class="symbol" style="background:${esc(color)}"></i>${esc(spec.label)}</div>`}}element.innerHTML=html||'<small>Легенда задаётся конфигурацией слоёв.</small>';return element};legend.addTo(map);
+const densityLegendSignature=spec=>spec.renderer==='density'&&Array.isArray(spec.bins)&&spec.bins.length
+  ?JSON.stringify([spec.value_field||'',spec.bins.map(bin=>[bin.max,bin.label,bin.color])])
+  :null;
+const densityLegendTitle=(states,spec)=>{
+  if(states.length===1)return spec.legend_title||spec.label;
+  const titles=new Set(states.map(state=>state.spec.legend_title).filter(Boolean));
+  if(titles.size===1)return [...titles][0];
+  const resolutions=new Set(states.map(state=>String(state.spec.label||'').match(/(?:,|\s)(\d+(?:[.,]\d+)?)\s*м\b/i)?.[1]).filter(Boolean));
+  const suffix=resolutions.size===1?`, ${[...resolutions][0]} м`:'';
+  return `Общая шкала моделей плотности${suffix}`;
+};
+let legendElement=null;
+function renderLegend(){
+  if(!legendElement)return;
+  let html='';
+  const visible=runtime.filter(state=>map.hasLayer(state.layer));
+  const seenDensity=new Set();
+  for(const state of visible){
+    const spec=state.spec;
+    if(spec.legend===false)continue;
+    const signature=densityLegendSignature(spec);
+    if(signature&&seenDensity.has(signature))continue;
+    if(signature)seenDensity.add(signature);
+    const title=signature?densityLegendTitle(visible.filter(other=>densityLegendSignature(other.spec)===signature),spec):(spec.legend_title||spec.label);
+    if(spec.categories&&Object.keys(spec.categories).length){
+      html+=`<section><b>${esc(title)}</b><br>${Object.entries(spec.categories).map(([value,item])=>`<i style="background:${esc(item.color)}"></i>${esc(item.label||value)}<br>`).join('')}</section>`;
+    }else if(Array.isArray(spec.bins)&&spec.bins.length){
+      html+=`<section><b>${esc(title)}</b><br>${spec.bins.map(bin=>`<i style="background:${esc(bin.color)}"></i>${esc(bin.label??(bin.max===null?'и выше':`< ${bin.max}`))}<br>`).join('')}</section>`;
+    }else if(spec.legend_symbol!==false){const color=spec.style?.color||palette[state.index%palette.length];html+=`<div><i class="symbol" style="background:${esc(color)}"></i>${esc(spec.label)}</div>`}
+  }
+  legendElement.innerHTML=html||'<small>Нет активных слоёв с легендой.</small>';
+}
+const legend=L.control({position:'bottomright'});
+legend.onAdd=()=>{
+  legendElement=L.DomUtil.create('div','legend');
+  L.DomEvent.disableClickPropagation(legendElement);
+  L.DomEvent.disableScrollPropagation(legendElement);
+  renderLegend();
+  return legendElement;
+};
+legend.addTo(map);
+map.on('zoomend overlayadd overlayremove',renderLegend);
 L.control.scale({imperial:false,maxWidth:180}).addTo(map);
 document.getElementById('status').innerHTML=`<b>Слои региона</b><br>${status.join('<br>')||'<span class="note">Слои ещё не настроены.</span>'}<br><span class="note">${esc(config.status_note||'Аналитические результаты требуют проверки методики и источников.')}</span>`;
 if(params.has('lat')&&params.has('lon')&&params.has('zoom')){const lat=Number(params.get('lat')),lon=Number(params.get('lon')),zoom=Number(params.get('zoom'));if([lat,lon,zoom].every(Number.isFinite))map.setView([lat,lon],zoom,{animate:false})}

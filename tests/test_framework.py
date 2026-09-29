@@ -403,19 +403,22 @@ class FrameworkTest(unittest.TestCase):
 
     def test_frontend_has_generic_advanced_renderers(self):
         source = (manage.ROOT / "core" / "map.js").read_text(encoding="utf-8")
+        styles = (manage.ROOT / "core" / "map.css").read_text(encoding="utf-8")
         gallery = (manage.ROOT / "core" / "gallery.js").read_text(encoding="utf-8")
         homepage = (manage.ROOT / "index.html").read_text(encoding="utf-8")
         map_page = (manage.ROOT / "map.html").read_text(encoding="utf-8")
         self.assertIn("region-gallery", homepage)
         self.assertIn("/map.html?region=", gallery)
         self.assertIn('class="home-link" href="/"', map_page)
-        for contract in ("L.canvas(", "buildTable", "relatedBounds", "syncZoomLayers", "fill_max_zoom", "refreshRegeneration", "regenerationRequested", "location.reload()", "maplibreGL", "tiles.openfreemap.org/styles/positron", "animate:false"):
+        for contract in ("L.canvas(", "buildTable", "relatedBounds", "syncZoomLayers", "fill_max_zoom", "refreshRegeneration", "regenerationRequested", "location.reload()", "maplibreGL", "tiles.openfreemap.org/styles/positron", "animate:false", "densityLegendSignature", "map.hasLayer(state.layer)", "Общая шкала моделей плотности", "map.on('zoomend overlayadd overlayremove',renderLegend)"):
             self.assertIn(contract, source)
         self.assertNotIn("tile.openstreetmap.org", source)
         self.assertEqual(source.count("L.canvas("), 1)
         self.assertNotIn("map.createPane(", source)
         self.assertIn("z_index??a[1].order", source)
         self.assertIn("state.layer.bringToFront", source)
+        self.assertIn("max-height:calc(100vh - 88px)", styles)
+        self.assertIn("overflow-y:auto", styles)
 
     def test_regeneration_contract_is_opt_in(self):
         source = (manage.ROOT / "pipeline_core" / "regeneration.py").read_text(encoding="utf-8")

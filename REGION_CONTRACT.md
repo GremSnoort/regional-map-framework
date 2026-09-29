@@ -41,6 +41,9 @@ regions/<region_id>/
 - `renderer` — `points`, `lines`, `polygons`, `choropleth`, `density`, `ranking`;
 - `bins`, `value_field`, `size_field` — шкала, цвет и размер;
 - `category_field`, `categories` — категориальные цвета и легенда;
+- активные `density`-слои с одинаковыми `value_field` и `bins` используют одну
+  общую шкалу легенды; одиночный слой сохраняет собственный `label` или
+  `legend_title`;
 - `label_field`, `label_min_field`, `label_min_value` — постоянные подписи по порогу;
 - `min_zoom`, `max_zoom` — диапазон отображения;
 - `style.fill_max_zoom` — последний масштаб с фоновой заливкой полигона;

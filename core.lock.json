@@ -29,8 +29,8 @@
     },
     "REGION_CONTRACT.md": {
       "path": "REGION_CONTRACT.md",
-      "bytes": 9590,
-      "sha256": "03de3d552902eef32693a8ef322d963d48717af9ad56e96dd4dc2ac3c9d43f3c"
+      "bytes": 9851,
+      "sha256": "88e1be6feb236067178b2824429598f06e172fa9aa575e01196206d530a17612"
     },
     "DEPLOYMENT.md": {
       "path": "DEPLOYMENT.md",
@@ -49,13 +49,13 @@
     },
     "core/map.js": {
       "path": "core/map.js",
-      "bytes": 16766,
-      "sha256": "92e21e95ef29f0d7e90a58db398591ea91222e8684635c6ca1e12b10b0da0e40"
+      "bytes": 18169,
+      "sha256": "dd0020e40b23a26e60b95f3f28e531935d399ad91bfbeba5fc7b073e738cf388"
     },
     "core/map.css": {
       "path": "core/map.css",
-      "bytes": 4657,
-      "sha256": "db3077f2bc66f0cf982b43821f98a93f80e60d4a7f9abe2926b623f011ee1378"
+      "bytes": 4777,
+      "sha256": "6b737372d39f133c1e058f673ed20396ed584a6b841494f011e4f18139d3ef86"
     },
     ".github/workflows/validate.yml": {
       "path": ".github/workflows/validate.yml",
