@@ -14,8 +14,8 @@
     },
     "manage.py": {
       "path": "manage.py",
-      "bytes": 47645,
-      "sha256": "097d8182a8c9412c3a07a54915ccd4bab5bf2b0462bfd3cbad75f367716645e0"
+      "bytes": 49829,
+      "sha256": "d83ec369f8fb294f6c049ec7965a7d65edc8cd2ef0ebc88fb9422e28492ff835"
     },
     "serve.py": {
       "path": "serve.py",
@@ -29,8 +29,8 @@
     },
     "REGION_CONTRACT.md": {
       "path": "REGION_CONTRACT.md",
-      "bytes": 9851,
-      "sha256": "88e1be6feb236067178b2824429598f06e172fa9aa575e01196206d530a17612"
+      "bytes": 12224,
+      "sha256": "03ed043ace647120b1f36154324bc4d4d5333d555e2eeb559fb2e7c1f0622419"
     },
     "DEPLOYMENT.md": {
       "path": "DEPLOYMENT.md",
@@ -49,13 +49,13 @@
     },
     "core/map.js": {
       "path": "core/map.js",
-      "bytes": 18169,
-      "sha256": "dd0020e40b23a26e60b95f3f28e531935d399ad91bfbeba5fc7b073e738cf388"
+      "bytes": 20014,
+      "sha256": "899b22fc26d19deb52a636a2458356ad7dc7d38ae2efdc51c100493eb185aa6f"
     },
     "core/map.css": {
       "path": "core/map.css",
-      "bytes": 4777,
-      "sha256": "6b737372d39f133c1e058f673ed20396ed584a6b841494f011e4f18139d3ef86"
+      "bytes": 4984,
+      "sha256": "73cc6a7abe365e5a7033ff040f9825cd21ebb82facf6aef355fffdd04cc721a6"
     },
     ".github/workflows/validate.yml": {
       "path": ".github/workflows/validate.yml",
@@ -144,8 +144,8 @@
     },
     "schemas/region.schema.json": {
       "path": "schemas/region.schema.json",
-      "bytes": 3092,
-      "sha256": "d06a4e05eca972b9ccc087d0c893cbac33b0e6fe88c4a2d957b9321bb0a21e57"
+      "bytes": 4888,
+      "sha256": "4b8e2407ae68943783b7432525e2860a549b7e1efc6f598e8909a474ffac0684"
     },
     "schemas/pipeline.schema.json": {
       "path": "schemas/pipeline.schema.json",

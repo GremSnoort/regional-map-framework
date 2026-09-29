@@ -37,6 +37,23 @@ const popupHtml=(properties,spec)=>{
   const fields=spec.popup_fields||Object.keys(properties).slice(0,12);
   return fields.map(field=>{const definition=typeof field==='string'?{field,label:field}:field,value=valueAt(properties,definition.field);if(value===undefined||value===null||value==='')return'';const url=definition.type==='url'?safeUrl(value):null;const rendered=definition.type==='url'?(url?`<a href="${esc(url)}" target="_blank" rel="noopener">${esc(definition.link_label||value)}</a>`:esc(value)):esc(format(value,definition.type));return `<b>${esc(definition.label||definition.field)}:</b> ${rendered}${esc(definition.suffix||'')}`}).filter(Boolean).join('<br>');
 };
+const externalMapSettings=spec=>spec.external_map_link&&typeof spec.external_map_link==='object'?spec.external_map_link:null;
+const externalMapLink=(feature,item,spec)=>{
+  const settings=externalMapSettings(spec);if(!settings)return'';
+  const bounds=typeof item.getBounds==='function'?item.getBounds():null;
+  const center=bounds?.isValid?.()?bounds.getCenter():typeof item.getLatLng==='function'?item.getLatLng():null;
+  if(!center||!Number.isFinite(center.lat)||!Number.isFinite(center.lng))return'';
+  if(settings.related_layer){
+    const related=runtime.find(state=>state.id===settings.related_layer);if(!related)return'';
+    const candidates=related.data.features||[],joinValue=valueAt(feature.properties||{},settings.feature_join_field);
+    const matches=joinValue===undefined||joinValue===null?[]:candidates.filter(candidate=>String(valueAt(candidate.properties||{},settings.related_join_field)||'').toLocaleLowerCase('ru')===String(joinValue).toLocaleLowerCase('ru'));
+    if(!matches.length)return'';
+    if(settings.related_filter_field&&!matches.some(candidate=>numeric(candidate.properties||{},settings.related_filter_field,NaN)>Number(settings.related_filter_min_exclusive??0)))return'';
+  }
+  const grid=Number(feature.properties?.grid_metres||0),zoom=Number(settings.zoom??(grid&&grid<=250?17:grid&&grid<=500?16:15)),ll=`${center.lng.toFixed(6)},${center.lat.toFixed(6)}`;
+  const url=new URL('https://yandex.ru/maps/');url.searchParams.set('ll',ll);url.searchParams.set('z',String(zoom));url.searchParams.set('pt',`${ll},pm2rdm`);
+  return `<a class="popup-map-link" href="${esc(url.href)}" target="_blank" rel="noopener">${esc(settings.label||'Открыть в Яндекс Картах')}</a>`;
+};
 const featureTitle=(feature,spec)=>valueAt(feature.properties||{},spec.title_field)||feature.properties?.name||feature.properties?.address||spec.label;
 const featureStyle=(feature,spec,index)=>{
   const properties=feature.properties||{},style=spec.style||{},value=numeric(properties,spec.value_field,NaN),bin=Number.isFinite(value)?binFor(spec,value):null,category=categoryFor(spec,properties),color=category?.color||bin?.color||style.color||palette[index%palette.length];
@@ -56,7 +73,7 @@ for(let index=0;index<specs.length;index++){
   const [id,spec]=specs[index];
   try{
     const data=await load(spec);
-    const layer=L.geoJSON(data,{renderer:vectorCanvas,interactive:spec.interactive!==false,style:feature=>({...featureStyle(feature,spec,index),pane:'overlayPane',renderer:vectorCanvas}),pointToLayer:(feature,latlng)=>{const point=pointLayer(feature,latlng,spec,index);point.options.pane='overlayPane';point.options.renderer=vectorCanvas;return point},onEachFeature:(feature,item)=>{const properties=feature.properties||{},title=featureTitle(feature,spec),body=popupHtml(properties,spec),label=valueAt(properties,spec.label_field)||title,permanent=Boolean(spec.label_field)&&(!spec.label_min_field||numeric(properties,spec.label_min_field)>=Number(spec.label_min_value??0));item.bindTooltip(esc(label),permanent?{permanent:true,interactive:true,direction:spec.label_direction||'right',className:'feature-label'}:{sticky:true});if(permanent)item.getTooltip()?.on('click',()=>item.openPopup());if(body)item.bindPopup(`<b>${esc(title)}</b><br>${body}`)}});
+    const layer=L.geoJSON(data,{renderer:vectorCanvas,interactive:spec.interactive!==false,style:feature=>({...featureStyle(feature,spec,index),pane:'overlayPane',renderer:vectorCanvas}),pointToLayer:(feature,latlng)=>{const point=pointLayer(feature,latlng,spec,index);point.options.pane='overlayPane';point.options.renderer=vectorCanvas;return point},onEachFeature:(feature,item)=>{const properties=feature.properties||{},title=featureTitle(feature,spec),body=popupHtml(properties,spec),label=valueAt(properties,spec.label_field)||title,permanent=Boolean(spec.label_field)&&(!spec.label_min_field||numeric(properties,spec.label_min_field)>=Number(spec.label_min_value??0));item.bindTooltip(esc(label),permanent?{permanent:true,interactive:true,direction:spec.label_direction||'right',className:'feature-label'}:{sticky:true});if(permanent)item.getTooltip()?.on('click',()=>item.openPopup());if(body||externalMapSettings(spec))item.bindPopup(()=>{const link=externalMapLink(feature,item,spec);return `<b>${esc(title)}</b>${body?`<br>${body}`:''}${link?`<br>${link}`:''}`})}});
     const state={id,spec,data,layer,index,suppressed:spec.default_visible===false};runtime.push(state);overlays[spec.label]=layer;
     if(!state.suppressed&&(!spec.min_zoom||map.getZoom()>=spec.min_zoom)&&(!spec.max_zoom||map.getZoom()<=spec.max_zoom))layer.addTo(map);
     if(spec.fit_bounds&&layer.getBounds().isValid())map.fitBounds(layer.getBounds(),{padding:[15,15],animate:false});

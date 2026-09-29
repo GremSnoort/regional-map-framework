@@ -410,8 +410,10 @@ class FrameworkTest(unittest.TestCase):
         self.assertIn("region-gallery", homepage)
         self.assertIn("/map.html?region=", gallery)
         self.assertIn('class="home-link" href="/"', map_page)
-        for contract in ("L.canvas(", "buildTable", "relatedBounds", "syncZoomLayers", "fill_max_zoom", "refreshRegeneration", "regenerationRequested", "location.reload()", "maplibreGL", "tiles.openfreemap.org/styles/positron", "animate:false", "densityLegendSignature", "map.hasLayer(state.layer)", "Общая шкала моделей плотности", "map.on('zoomend overlayadd overlayremove',renderLegend)"):
+        for contract in ("L.canvas(", "buildTable", "relatedBounds", "syncZoomLayers", "fill_max_zoom", "refreshRegeneration", "regenerationRequested", "location.reload()", "maplibreGL", "tiles.openfreemap.org/styles/positron", "animate:false", "densityLegendSignature", "map.hasLayer(state.layer)", "Общая шкала моделей плотности", "map.on('zoomend overlayadd overlayremove',renderLegend)", "externalMapLink", "https://yandex.ru/maps/", "related_filter_min_exclusive", "bounds.getCenter()"):
             self.assertIn(contract, source)
+        self.assertNotIn("nearest_layer", source)
+        self.assertNotIn("map.distance(origin", source)
         self.assertNotIn("tile.openstreetmap.org", source)
         self.assertEqual(source.count("L.canvas("), 1)
         self.assertNotIn("map.createPane(", source)
@@ -543,6 +545,55 @@ class FrameworkTest(unittest.TestCase):
         config["layers"]["areas"]["style"]["fill_opacity_above_max"] = 1.5
         with self.assertRaises(ValueError):
             manage.validate_config(config, "demo")
+
+    def test_external_map_link_contract(self):
+        config = json.loads((manage.ROOT / "templates" / "region.example.json").read_text(encoding="utf-8"))
+        config["region_id"] = "demo"
+        config["layers"] = {
+            "priority": {"file": "data/priority.geojson", "label": "Priority", "geometry_types": ["Point"]},
+            "density": {
+                "file": "data/density.geojson", "label": "Density", "renderer": "density", "geometry_types": ["Polygon"],
+                "external_map_link": {"provider": "yandex_maps", "related_layer": "priority", "feature_join_field": "settlement_name", "related_join_field": "name", "related_filter_field": "capacity", "related_filter_min_exclusive": 0},
+            },
+        }
+        manage.validate_config(config, "demo")
+        valid_link = dict(config["layers"]["density"]["external_map_link"])
+        config["layers"]["density"]["external_map_link"] = {"provider": "yandex_maps", "related_layer": "priority"}
+        with self.assertRaisesRegex(ValueError, "relation is invalid"):
+            manage.validate_config(config, "demo")
+        config["layers"]["density"]["external_map_link"] = valid_link
+        config["layers"]["density"]["external_map_link"]["related_layer"] = "missing"
+        with self.assertRaisesRegex(ValueError, "relation is invalid"):
+            manage.validate_config(config, "demo")
+        config["layers"]["density"]["external_map_link"] = {"provider": "yandex_maps", "feature_join_field": "settlement_name"}
+        with self.assertRaisesRegex(ValueError, "relation fields require related_layer"):
+            manage.validate_config(config, "demo")
+        config["layers"]["density"]["external_map_link"] = {"provider": "yandex_maps", "label": "Open cell centre"}
+        manage.validate_config(config, "demo")
+        config["layers"]["density"]["external_map_link"] = None
+        with self.assertRaisesRegex(ValueError, "external_map_link is malformed"):
+            manage.validate_config(config, "demo")
+        config["layers"]["density"]["external_map_link"] = False
+        manage.validate_config(config, "demo")
+
+    def test_external_map_link_schema_declares_relation_dependencies(self):
+        schema = json.loads((manage.ROOT / "schemas" / "region.schema.json").read_text(encoding="utf-8"))
+        link_schema = schema["properties"]["layers"]["additionalProperties"]["properties"]["external_map_link"]["oneOf"][1]
+        rules = link_schema["allOf"]
+        self.assertIn(
+            {"if": {"required": ["related_layer"]}, "then": {"required": ["feature_join_field", "related_join_field"]}},
+            rules,
+        )
+        relation_fields = {"feature_join_field", "related_join_field", "related_filter_field", "related_filter_min_exclusive"}
+        reverse_rule = next(rule for rule in rules if rule.get("then") == {"required": ["related_layer"]})
+        self.assertEqual(
+            {branch["required"][0] for branch in reverse_rule["if"]["anyOf"]},
+            relation_fields,
+        )
+        self.assertIn(
+            {"if": {"required": ["related_filter_min_exclusive"]}, "then": {"required": ["related_filter_field"]}},
+            rules,
+        )
 
     def test_adaptive_density_refines_only_complex_blocks(self):
         rows = {

@@ -190,6 +190,27 @@ def validate_config(config: dict, region_id: str) -> None:
             raise ValueError(f"Layer {layer_id} categories are malformed")
         if not isinstance(spec.get("popup_fields", []), list) or not isinstance(spec.get("table", {}), dict) or not isinstance(spec.get("style", {}), dict):
             raise ValueError(f"Layer {layer_id} display contract is malformed")
+        link = spec.get("external_map_link")
+        if "external_map_link" in spec and link is not False:
+            allowed = {"provider", "label", "zoom", "related_layer", "feature_join_field", "related_join_field", "related_filter_field", "related_filter_min_exclusive"}
+            if not isinstance(link, dict) or link.get("provider") != "yandex_maps" or set(link) - allowed:
+                raise ValueError(f"Layer {layer_id}: external_map_link is malformed")
+            if "label" in link and (not isinstance(link["label"], str) or not link["label"]):
+                raise ValueError(f"Layer {layer_id}: external_map_link.label must be a non-empty string")
+            if "zoom" in link and (not isinstance(link["zoom"], (int, float)) or isinstance(link["zoom"], bool) or not 0 <= link["zoom"] <= 23):
+                raise ValueError(f"Layer {layer_id}: external_map_link.zoom must be between 0 and 23")
+            related_layer = link.get("related_layer")
+            relation_fields = ("feature_join_field", "related_join_field")
+            if related_layer is not None:
+                safe_id(related_layer, "external_map_link.related_layer")
+                if related_layer not in config["layers"] or any(not isinstance(link.get(key), str) or not link[key] for key in relation_fields):
+                    raise ValueError(f"Layer {layer_id}: external_map_link relation is invalid")
+            elif any(key in link for key in (*relation_fields, "related_filter_field", "related_filter_min_exclusive")):
+                raise ValueError(f"Layer {layer_id}: external_map_link relation fields require related_layer")
+            if "related_filter_field" in link and (not isinstance(link["related_filter_field"], str) or not link["related_filter_field"]):
+                raise ValueError(f"Layer {layer_id}: external_map_link filter is invalid")
+            if "related_filter_min_exclusive" in link and ("related_filter_field" not in link or not isinstance(link["related_filter_min_exclusive"], (int, float)) or isinstance(link["related_filter_min_exclusive"], bool)):
+                raise ValueError(f"Layer {layer_id}: external_map_link threshold is invalid")
         style = spec.get("style", {})
         if "regenerable" in spec and not isinstance(spec["regenerable"], bool):
             raise ValueError(f"Layer {layer_id}: regenerable must be boolean")

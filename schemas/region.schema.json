@@ -46,7 +46,49 @@
           "title_field": {"type": "string"}, "value_field": {"type": "string"}, "size_field": {"type": "string"},
           "category_field": {"type": "string"}, "categories": {"type": "object"},
           "label_field": {"type": "string"}, "label_min_field": {"type": "string"}, "label_min_value": {"type": "number"},
-          "popup_fields": {"type": "array"}, "bins": {"type": "array"}, "style": {"type": "object"}, "table": {"type": "object"}
+          "popup_fields": {"type": "array"}, "bins": {"type": "array"},
+          "external_map_link": {
+            "oneOf": [
+              {"const": false},
+              {
+                "type": "object",
+                "required": ["provider"],
+                "properties": {
+                  "provider": {"const": "yandex_maps"},
+                  "label": {"type": "string", "minLength": 1},
+                  "zoom": {"type": "number", "minimum": 0, "maximum": 23},
+                  "related_layer": {"type": "string", "pattern": "^[a-z0-9][a-z0-9_-]*$"},
+                  "feature_join_field": {"type": "string", "minLength": 1},
+                  "related_join_field": {"type": "string", "minLength": 1},
+                  "related_filter_field": {"type": "string", "minLength": 1},
+                  "related_filter_min_exclusive": {"type": "number"}
+                },
+                "allOf": [
+                  {
+                    "if": {"required": ["related_layer"]},
+                    "then": {"required": ["feature_join_field", "related_join_field"]}
+                  },
+                  {
+                    "if": {
+                      "anyOf": [
+                        {"required": ["feature_join_field"]},
+                        {"required": ["related_join_field"]},
+                        {"required": ["related_filter_field"]},
+                        {"required": ["related_filter_min_exclusive"]}
+                      ]
+                    },
+                    "then": {"required": ["related_layer"]}
+                  },
+                  {
+                    "if": {"required": ["related_filter_min_exclusive"]},
+                    "then": {"required": ["related_filter_field"]}
+                  }
+                ],
+                "additionalProperties": false
+              }
+            ]
+          },
+          "style": {"type": "object"}, "table": {"type": "object"}
         },
         "additionalProperties": true
       }
