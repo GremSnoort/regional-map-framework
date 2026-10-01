@@ -2,7 +2,7 @@
 <html lang="ru">
 <head>
   <meta charset="utf-8">
-  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
   <title>Региональная аналитическая карта</title>
   <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
   <link rel="stylesheet" href="https://unpkg.com/maplibre-gl@6.3.0/dist/maplibre-gl.css">
@@ -12,12 +12,33 @@
   <div id="map"></div>
   <section class="title" id="title"><h1>Загрузка карты…</h1></section>
   <section class="statusbox" id="status"><b>Слои данных</b><br>Проверка регионального пакета…</section>
+  <span id="regeneration-anchor" hidden></span>
   <section class="regeneration" id="regeneration" hidden></section>
   <section class="sourcebox" id="sources"></section>
   <nav class="sessionbox" aria-label="Навигация и сессия">
     <a class="home-link" href="/">Все регионы</a>
     <span id="session-user"></span>
     <form method="post" action="/auth/logout"><button type="submit">Выйти</button></form>
+  </nav>
+  <header class="mobile-map-header" aria-label="Мобильная навигация карты">
+    <a class="mobile-home-link" href="/" aria-label="Вернуться к списку регионов"><span aria-hidden="true">←</span><span>Регионы</span></a>
+    <strong id="mobile-map-title">Карта</strong>
+    <form method="post" action="/auth/logout"><button type="submit">Выйти</button></form>
+  </header>
+  <div class="mobile-sheet-backdrop" id="mobile-sheet-backdrop" hidden></div>
+  <section class="mobile-sheet" id="mobile-sheet" role="dialog" aria-modal="true" aria-labelledby="mobile-sheet-title" hidden>
+    <header>
+      <span class="mobile-sheet-handle" aria-hidden="true"></span>
+      <h2 id="mobile-sheet-title">Панель карты</h2>
+      <button class="mobile-sheet-close" id="mobile-sheet-close" type="button" aria-label="Закрыть">×</button>
+    </header>
+    <div class="mobile-sheet-body" id="mobile-sheet-body"></div>
+  </section>
+  <nav class="mobile-map-nav" aria-label="Инструменты карты">
+    <button type="button" data-mobile-panel="layers"><span aria-hidden="true">☷</span><span>Слои</span></button>
+    <button type="button" data-mobile-panel="legend"><span aria-hidden="true">◐</span><span>Легенда</span></button>
+    <button type="button" data-mobile-panel="objects"><span aria-hidden="true">≡</span><span>Объекты</span></button>
+    <button type="button" data-mobile-panel="info"><span aria-hidden="true">i</span><span>Информация</span></button>
   </nav>
   <script type="importmap">{"imports":{"leaflet":"https://unpkg.com/leaflet@1.9.4/dist/leaflet-src.esm.js","maplibre-gl":"https://unpkg.com/maplibre-gl@6.3.0/dist/maplibre-gl.mjs"}}</script>
   <script type="module" src="/core/map.js"></script>

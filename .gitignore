@@ -7,6 +7,7 @@ __pycache__/
 .DS_Store
 
 # Runtime, credentials and transactional state
+/CREDS.md
 /.runtime/
 **/.runner.lock
 **/.regeneration.lock

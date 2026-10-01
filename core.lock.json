@@ -4,13 +4,13 @@
   "files": {
     "index.html": {
       "path": "index.html",
-      "bytes": 1864,
-      "sha256": "075de79075058b7cd3c8ef11a9f493b01d2f5fb470a555dc836f122fe7fbe0e7"
+      "bytes": 1954,
+      "sha256": "c2bd571c61c29be8a65909b0962711f5068715e38e23cb1726be944385a75b68"
     },
     "map.html": {
       "path": "map.html",
-      "bytes": 1357,
-      "sha256": "34a460408834f281ea1675cdd126c5aec1e9fdc75c9e6bed2e753d974edfd713"
+      "bytes": 3000,
+      "sha256": "c81f293dbda6db5d8e86a4ba181b0c98db9ecd94bfc93d0154ee54ddf188fb88"
     },
     "manage.py": {
       "path": "manage.py",
@@ -44,18 +44,18 @@
     },
     "core/gallery.css": {
       "path": "core/gallery.css",
-      "bytes": 5105,
-      "sha256": "2b481b995e664f592caebb306901f0ef9a2a9b6c04fb9a935adbad365c06df61"
+      "bytes": 5681,
+      "sha256": "2eb0862807d14fbb67d9ce59208b8bd93ddec8f25673c2c0d7570612243789f3"
     },
     "core/map.js": {
       "path": "core/map.js",
-      "bytes": 20014,
-      "sha256": "899b22fc26d19deb52a636a2458356ad7dc7d38ae2efdc51c100493eb185aa6f"
+      "bytes": 28746,
+      "sha256": "e8086855e8ac015586c7f854cef5262343cfbb83ed4c133f4505be1e5dbfbd6e"
     },
     "core/map.css": {
       "path": "core/map.css",
-      "bytes": 4984,
-      "sha256": "73cc6a7abe365e5a7033ff040f9825cd21ebb82facf6aef355fffdd04cc721a6"
+      "bytes": 11180,
+      "sha256": "6229933961f41ea3f431bbbbb0a120dbeb24adc7b69b5eea95490f681c1ac2e3"
     },
     ".github/workflows/validate.yml": {
       "path": ".github/workflows/validate.yml",

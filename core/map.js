@@ -7,6 +7,7 @@ const valueAt=(properties,path)=>String(path||'name').split('.').reduce((value,k
 const numeric=(properties,path,fallback=0)=>{const value=Number(valueAt(properties,path));return Number.isFinite(value)?value:fallback};
 const format=(value,type)=>type==='number'?Number(value||0).toLocaleString('ru-RU'):type==='decimal'?Number(value||0).toLocaleString('ru-RU',{maximumFractionDigits:2}):String(value??'');
 const params=new URLSearchParams(location.search);
+const mobileQuery=window.matchMedia('(max-width:820px)');
 const registry=await fetch('registry.json').then(response=>response.ok?response.json():Promise.reject(new Error(`registry.json: HTTP ${response.status}`)));
 const regionId=params.get('region')||registry.default_region;
 if(!regionId){document.getElementById('title').innerHTML='<h1>Региональная аналитическая карта</h1><p>Каркас установлен, но регионы ещё не добавлены.</p>';document.getElementById('status').innerHTML='<b>Следующий шаг</b><br><span class="note">Создайте регион командой <code>python3 manage.py init-region</code>.</span>';throw new Error('No regions configured')}
@@ -14,6 +15,7 @@ if(!/^[a-z0-9_-]+$/.test(regionId)||!registry.regions.includes(regionId))throw n
 const base=`regions/${regionId}`;
 const config=await fetch(`${base}/region.json`).then(response=>response.ok?response.json():Promise.reject(new Error(`region.json: HTTP ${response.status}`)));
 document.title=config.page_title;
+document.getElementById('mobile-map-title').textContent=config.title;
 document.getElementById('title').innerHTML=`<h1>${esc(config.title)}</h1>${config.lifecycle==='draft'?'<p class="bad"><b>Черновик:</b> пакет ещё не прошёл production-проверку.</p>':''}<p>${esc(config.subtitle||'')}</p>`;
 document.getElementById('sources').textContent=config.source_note||'Источники не описаны.';
 fetch('/api/session',{cache:'no-store'}).then(response=>response.ok?response.json():null).then(session=>{if(session)document.getElementById('session-user').textContent=session.username});
@@ -107,9 +109,10 @@ function buildTable(state,tableIndex){
   const sorts=options.sort||[];features.sort((a,b)=>{for(const rule of sorts){const av=valueAt(a.properties||{},rule.field),bv=valueAt(b.properties||{},rule.field),direction=rule.direction==='asc'?1:-1,difference=typeof av==='number'&&typeof bv==='number'?(av-bv):String(av??'').localeCompare(String(bv??''),'ru');if(difference)return difference*direction}return 0});
   const panel=document.createElement('aside');panel.className='data-panel';panel.style.top=`${180+tableIndex*46}px`;panel.innerHTML=`<button class="data-panel-toggle" type="button" aria-expanded="false"><span>☰ ${esc(options.button_label||state.spec.label)}</span><b>${features.length}</b></button><div class="data-panel-content"><header><div><h2>${esc(options.title||state.spec.label)}</h2><p>${esc(options.subtitle||'Объекты в заданном порядке')}</p></div><button class="data-panel-close" type="button" aria-label="Свернуть">×</button></header><div class="data-table-wrap"><table><thead><tr><th>№</th>${(options.columns||[]).map(column=>`<th>${esc(column.label||column.field)}</th>`).join('')}</tr></thead><tbody></tbody></table></div><footer>${esc(options.footer||'Нажмите на строку для перехода к объекту.')}</footer></div>`;
   document.body.appendChild(panel);L.DomEvent.disableClickPropagation(panel);L.DomEvent.disableScrollPropagation(panel);
+  state.tablePanel=panel;state.tableFeatures=features;
   const closedTop=`${180+tableIndex*46}px`,toggle=panel.querySelector('.data-panel-toggle'),close=panel.querySelector('.data-panel-close'),body=panel.querySelector('tbody'),setOpen=open=>{if(open)document.querySelectorAll('.data-panel.open').forEach(other=>{if(other!==panel){other.classList.remove('open');other.style.top=other.dataset.closedTop;other.querySelector('.data-panel-toggle')?.setAttribute('aria-expanded','false')}});panel.classList.toggle('open',open);panel.style.top=open?'16px':closedTop;toggle.setAttribute('aria-expanded',String(open));if(open)map.closePopup()};panel.dataset.closedTop=closedTop;
   toggle.addEventListener('click',()=>setOpen(!panel.classList.contains('open')));close.addEventListener('click',()=>setOpen(false));
-  features.forEach((feature,index)=>{const row=document.createElement('tr');row.tabIndex=0;row.setAttribute('role','button');row.innerHTML=`<td>${index+1}</td>${(options.columns||[]).map(column=>`<td>${column.bold?'<b>':''}${esc(format(valueAt(feature.properties||{},column.field),column.type))}${esc(column.suffix||'')}${column.bold?'</b>':''}</td>`).join('')}`;const focus=()=>{setOpen(false);focusFeature(feature,state)};row.addEventListener('click',focus);row.addEventListener('keydown',event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();focus()}});body.appendChild(row)});
+  features.forEach((feature,index)=>{const row=document.createElement('tr');row.tabIndex=0;row.setAttribute('role','button');row.innerHTML=`<td data-label="&#8470;">${index+1}</td>${(options.columns||[]).map(column=>`<td data-label="${esc(column.label||column.field)}">${column.bold?'<b>':''}${esc(format(valueAt(feature.properties||{},column.field),column.type))}${esc(column.suffix||'')}${column.bold?'</b>':''}</td>`).join('')}`;const focus=()=>{setOpen(false);focusFeature(feature,state)};row.addEventListener('click',focus);row.addEventListener('keydown',event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();focus()}});body.appendChild(row)});
 }
 runtime.filter(state=>state.spec.table?.enabled).forEach(buildTable);
 
@@ -157,4 +160,180 @@ legend.addTo(map);
 map.on('zoomend overlayadd overlayremove',renderLegend);
 L.control.scale({imperial:false,maxWidth:180}).addTo(map);
 document.getElementById('status').innerHTML=`<b>Слои региона</b><br>${status.join('<br>')||'<span class="note">Слои ещё не настроены.</span>'}<br><span class="note">${esc(config.status_note||'Аналитические результаты требуют проверки методики и источников.')}</span>`;
+function setupMobileUi(){
+  const sheet=document.getElementById('mobile-sheet');
+  const sheetBody=document.getElementById('mobile-sheet-body');
+  const sheetTitle=document.getElementById('mobile-sheet-title');
+  const sheetClose=document.getElementById('mobile-sheet-close');
+  const backdrop=document.getElementById('mobile-sheet-backdrop');
+  const navigation=document.querySelector('.mobile-map-nav');
+  const mobileHeader=document.querySelector('.mobile-map-header');
+  const regenerationAnchor=document.getElementById('regeneration-anchor');
+  const buttons=[...navigation.querySelectorAll('[data-mobile-panel]')];
+  const modalBackground=[document.getElementById('map'),mobileHeader,navigation];
+  const titles={layers:'Слои карты',legend:'Легенда',objects:'Объекты',info:'Информация'};
+  let activePanel=null;
+  let returnFocus=null;
+  let touchStartY=null;
+
+  const restoreRegeneration=()=>{
+    if(regeneration.parentElement!==document.body)regenerationAnchor.insertAdjacentElement('afterend',regeneration);
+    regeneration.classList.remove('mobile-embedded');
+  };
+  const closeMobileSheet=(restoreFocus=true)=>{
+    if(sheet.hidden)return;
+    restoreRegeneration();
+    sheet.hidden=true;
+    backdrop.hidden=true;
+    document.body.classList.remove('mobile-sheet-open');
+    buttons.forEach(button=>button.setAttribute('aria-expanded','false'));
+    for(const element of modalBackground)element.inert=false;
+    activePanel=null;
+    if(restoreFocus&&returnFocus?.isConnected)returnFocus.focus();
+    returnFocus=null;
+  };
+  const renderLayers=()=>{
+    const list=document.createElement('div');
+    list.className='mobile-layer-list';
+    for(const state of runtime){
+      const label=document.createElement('label');
+      label.className='mobile-layer-row';
+      const checkbox=document.createElement('input');
+      checkbox.type='checkbox';
+      checkbox.checked=!state.suppressed;
+      const content=document.createElement('span');
+      const title=document.createElement('strong');
+      title.textContent=state.spec.label;
+      const details=document.createElement('small');
+      const count=(state.data.features||[]).length.toLocaleString('ru-RU');
+      details.textContent=inZoomRange(state)?`${count} объектов`:`${count} объектов · вне текущего масштаба`;
+      content.append(title,details);
+      checkbox.addEventListener('change',()=>{
+        state.suppressed=!checkbox.checked;
+        if(state.suppressed&&map.hasLayer(state.layer))map.removeLayer(state.layer);
+        else syncZoomLayers();
+        renderLegend();
+      });
+      label.append(checkbox,content);
+      list.appendChild(label);
+    }
+    sheetBody.replaceChildren(list);
+  };
+  const renderMobileLegend=()=>{
+    renderLegend();
+    const content=document.createElement('div');
+    content.className='mobile-legend';
+    content.innerHTML=legendElement?.innerHTML||'<small>Нет активных слоёв с легендой.</small>';
+    sheetBody.replaceChildren(content);
+  };
+  const renderObjects=()=>{
+    const states=runtime.filter(state=>state.tablePanel);
+    const list=document.createElement('div');
+    list.className='mobile-object-list';
+    if(!states.length){
+      const empty=document.createElement('p');
+      empty.textContent='Для этого региона отдельные списки объектов не настроены.';
+      list.appendChild(empty);
+    }
+    for(const state of states){
+      const button=document.createElement('button');
+      button.type='button';
+      button.className='mobile-object-button';
+      const label=document.createElement('span');
+      label.textContent=state.spec.table?.button_label||state.spec.label;
+      const count=document.createElement('b');
+      count.textContent=String(state.tableFeatures?.length||0);
+      button.append(label,count);
+      button.addEventListener('click',()=>{
+        closeMobileSheet(false);
+        state.tablePanel.querySelector('.data-panel-toggle')?.click();
+      });
+      list.appendChild(button);
+    }
+    sheetBody.replaceChildren(list);
+  };
+  const renderInfo=()=>{
+    const summary=document.createElement('section');
+    summary.className='mobile-info-section';
+    const heading=document.createElement('h3');
+    heading.textContent=config.title;
+    const subtitle=document.createElement('div');
+    subtitle.textContent=config.subtitle||'';
+    summary.append(heading,subtitle);
+    const layerStatus=document.createElement('section');
+    layerStatus.className='mobile-info-section';
+    layerStatus.innerHTML=document.getElementById('status').innerHTML;
+    const sources=document.createElement('section');
+    sources.className='mobile-info-section';
+    const sourcesTitle=document.createElement('h3');
+    sourcesTitle.textContent='Источники';
+    const sourcesText=document.createElement('div');
+    sourcesText.textContent=config.source_note||'Источники не описаны.';
+    sources.append(sourcesTitle,sourcesText);
+    sheetBody.replaceChildren(summary,layerStatus,sources);
+    if(!regeneration.hidden){
+      regeneration.classList.add('mobile-embedded');
+      sheetBody.appendChild(regeneration);
+    }
+  };
+  const renderActivePanel=()=>{
+    if(activePanel==='layers')renderLayers();
+    else if(activePanel==='legend')renderMobileLegend();
+    else if(activePanel==='objects')renderObjects();
+    else if(activePanel==='info')renderInfo();
+  };
+  const openMobileSheet=(panel,trigger)=>{
+    if(!mobileQuery.matches)return;
+    if(activePanel===panel&&!sheet.hidden){closeMobileSheet();return}
+    restoreRegeneration();
+    returnFocus=trigger;
+    activePanel=panel;
+    sheetTitle.textContent=titles[panel]||'Панель карты';
+    renderActivePanel();
+    sheet.hidden=false;
+    backdrop.hidden=false;
+    document.body.classList.add('mobile-sheet-open');
+    for(const element of modalBackground)element.inert=true;
+    buttons.forEach(button=>button.setAttribute('aria-expanded',String(button.dataset.mobilePanel===panel)));
+    sheetBody.scrollTop=0;
+    sheetClose.focus();
+  };
+
+  for(const button of buttons){
+    button.setAttribute('aria-expanded','false');
+    button.setAttribute('aria-controls','mobile-sheet');
+    button.addEventListener('click',()=>openMobileSheet(button.dataset.mobilePanel,button));
+  }
+  const objectsButton=navigation.querySelector('[data-mobile-panel="objects"]');
+  objectsButton.disabled=!runtime.some(state=>state.tablePanel);
+  sheetClose.addEventListener('click',()=>closeMobileSheet());
+  backdrop.addEventListener('click',()=>closeMobileSheet());
+  document.addEventListener('keydown',event=>{
+    if(sheet.hidden)return;
+    if(event.key==='Escape'){event.preventDefault();closeMobileSheet();return}
+    if(event.key!=='Tab')return;
+    const focusable=[...sheet.querySelectorAll('button:not(:disabled),a[href],input:not(:disabled)')].filter(element=>element.getClientRects().length);
+    if(!focusable.length)return;
+    const first=focusable[0],last=focusable[focusable.length-1];
+    if(event.shiftKey&&document.activeElement===first){event.preventDefault();last.focus()}
+    else if(!event.shiftKey&&document.activeElement===last){event.preventDefault();first.focus()}
+  });
+  sheet.querySelector('header').addEventListener('touchstart',event=>{touchStartY=event.touches[0]?.clientY??null},{passive:true});
+  sheet.querySelector('header').addEventListener('touchend',event=>{
+    const end=event.changedTouches[0]?.clientY;
+    if(touchStartY!==null&&end-touchStartY>70)closeMobileSheet();
+    touchStartY=null;
+  },{passive:true});
+  const stopMapEvents=element=>{L.DomEvent.disableClickPropagation(element);L.DomEvent.disableScrollPropagation(element)};
+  stopMapEvents(sheet);stopMapEvents(navigation);stopMapEvents(mobileHeader);
+  map.on('zoomend overlayadd overlayremove',()=>{if(!sheet.hidden&&(activePanel==='layers'||activePanel==='legend'))renderActivePanel()});
+  const regenerationObserver=new MutationObserver(()=>{if(activePanel==='info'&&!sheet.hidden)renderInfo()});
+  regenerationObserver.observe(regeneration,{attributes:true,attributeFilter:['hidden'],childList:true,subtree:true});
+  const onViewportChange=()=>{
+    if(!mobileQuery.matches)closeMobileSheet(false);
+  };
+  if(typeof mobileQuery.addEventListener==='function')mobileQuery.addEventListener('change',onViewportChange);
+  else mobileQuery.addListener(onViewportChange);
+}
+setupMobileUi();
 if(params.has('lat')&&params.has('lon')&&params.has('zoom')){const lat=Number(params.get('lat')),lon=Number(params.get('lon')),zoom=Number(params.get('zoom'));if([lat,lon,zoom].every(Number.isFinite))map.setView([lat,lon],zoom,{animate:false})}
