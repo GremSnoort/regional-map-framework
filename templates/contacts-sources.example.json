@@ -1,0 +1,11 @@
+{
+  "schema_version": 1,
+  "region_id": "my_region",
+  "enabled": true,
+  "min_interval_seconds": 43200,
+  "request_delay_seconds": 2,
+  "sources": [
+    {"source_id": "reviewed_seed", "type": "local_json", "path": "contacts/seeds/contacts.json"},
+    {"source_id": "agency_site", "type": "website", "name": "Пример агентства", "kind": "agency", "coverage": ["Мой регион"], "specializations": ["коммерческая недвижимость"], "urls": ["https://example.com/contacts"], "allowed_hosts": ["example.com"], "respect_robots_txt": true}
+  ]
+}

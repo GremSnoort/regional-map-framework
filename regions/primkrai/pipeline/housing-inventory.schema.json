@@ -1,0 +1,340 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Primorye housing evidence inventory v2",
+  "description": "An address candidate is not a verified contour. Confirmation and weight eligibility additionally require housing_inventory.py semantic validation.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "osm_id",
+    "geometry_sha256",
+    "osm_tags_sha256",
+    "municipality",
+    "model_settlement",
+    "osm_address",
+    "footprint_area_m2",
+    "match",
+    "fields",
+    "issues",
+    "independent_occupancy_verified",
+    "area_consistency_flags"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 2
+    },
+    "osm_id": {
+      "type": "string",
+      "pattern": "^(way|relation)/[0-9]+$"
+    },
+    "geometry_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "osm_tags_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "municipality": {
+      "type": "string"
+    },
+    "model_settlement": {
+      "type": [
+        "string",
+        "null"
+      ]
+    },
+    "osm_address": {
+      "type": "object",
+      "additionalProperties": {
+        "type": "string"
+      }
+    },
+    "footprint_area_m2": {
+      "type": "number",
+      "minimum": 0
+    },
+    "match": {
+      "type": "object",
+      "required": [
+        "status",
+        "canonical_house_id",
+        "candidate_house_ids"
+      ],
+      "properties": {
+        "status": {
+          "enum": [
+            "unmatched",
+            "candidate",
+            "confirmed",
+            "rejected"
+          ]
+        },
+        "canonical_house_id": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "candidate_house_ids": {
+          "type": "array",
+          "uniqueItems": true,
+          "items": {
+            "type": "string"
+          }
+        },
+        "reviewer": {
+          "type": "string",
+          "minLength": 1
+        },
+        "reviewed_at": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "confirmed"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "reviewer": {
+                "type": "string",
+                "minLength": 1
+              },
+              "reviewed_at": {
+                "type": "string",
+                "minLength": 1
+              },
+              "canonical_house_id": {
+                "type": "string",
+                "minLength": 1
+              }
+            },
+            "required": [
+              "reviewer",
+              "reviewed_at"
+            ]
+          }
+        }
+      ]
+    },
+    "fields": {
+      "type": "object",
+      "required": [
+        "house_type",
+        "use",
+        "above_ground_storeys",
+        "gross_building_area_m2",
+        "premises_total_area_m2",
+        "residential_premises_area_m2",
+        "apartments",
+        "occupied_fraction",
+        "mean_household_size"
+      ],
+      "properties": {
+        "house_type": {
+          "$ref": "#/$defs/field"
+        },
+        "use": {
+          "$ref": "#/$defs/field"
+        },
+        "above_ground_storeys": {
+          "$ref": "#/$defs/field"
+        },
+        "gross_building_area_m2": {
+          "$ref": "#/$defs/field"
+        },
+        "premises_total_area_m2": {
+          "$ref": "#/$defs/field"
+        },
+        "residential_premises_area_m2": {
+          "$ref": "#/$defs/field"
+        },
+        "apartments": {
+          "$ref": "#/$defs/field"
+        },
+        "occupied_fraction": {
+          "$ref": "#/$defs/field"
+        },
+        "mean_household_size": {
+          "$ref": "#/$defs/field"
+        }
+      },
+      "additionalProperties": false
+    },
+    "issues": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string"
+      }
+    },
+    "area_consistency_flags": {
+      "type": "array",
+      "uniqueItems": true,
+      "items": {
+        "type": "string"
+      }
+    },
+    "independent_occupancy_verified": {
+      "type": "boolean"
+    }
+  },
+  "additionalProperties": false,
+  "$defs": {
+    "field": {
+      "type": "object",
+      "required": [
+        "value",
+        "status",
+        "observations"
+      ],
+      "properties": {
+        "value": {
+          "type": [
+            "number",
+            "string",
+            "null"
+          ]
+        },
+        "status": {
+          "enum": [
+            "unknown",
+            "reported",
+            "conflicting",
+            "confirmed"
+          ]
+        },
+        "observations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/observation"
+          }
+        },
+        "reviewer": {
+          "type": "string",
+          "minLength": 1
+        },
+        "reviewed_at": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "const": "confirmed"
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "reviewer": {
+                "type": "string",
+                "minLength": 1
+              },
+              "reviewed_at": {
+                "type": "string",
+                "minLength": 1
+              },
+              "value": {
+                "type": [
+                  "number",
+                  "string"
+                ]
+              },
+              "observations": {
+                "minItems": 1,
+                "items": {
+                  "allOf": [
+                    {
+                      "$ref": "#/$defs/observation"
+                    },
+                    {
+                      "properties": {
+                        "as_of": {
+                          "type": "string",
+                          "minLength": 1
+                        }
+                      }
+                    }
+                  ]
+                }
+              }
+            },
+            "required": [
+              "reviewer",
+              "reviewed_at"
+            ]
+          }
+        },
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "enum": [
+                  "unknown",
+                  "conflicting"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "value": {
+                "type": "null"
+              }
+            }
+          }
+        }
+      ],
+      "additionalProperties": false
+    },
+    "observation": {
+      "type": "object",
+      "required": [
+        "value",
+        "source_id",
+        "locator",
+        "as_of",
+        "scope"
+      ],
+      "properties": {
+        "value": {
+          "type": [
+            "number",
+            "string"
+          ]
+        },
+        "source_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "locator": {
+          "type": "string",
+          "minLength": 1
+        },
+        "as_of": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "scope": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

@@ -1,6 +1,7 @@
 import json
 import os
 import shutil
+import socket
 import subprocess
 import sys
 import tempfile
@@ -15,7 +16,7 @@ from unittest.mock import patch
 import auth
 import manage
 import serve
-from pipeline_core import regeneration
+from pipeline_core import contacts, regeneration
 from pipeline_core.build_adaptive_density import adaptive_rows
 
 
@@ -34,6 +35,8 @@ class FrameworkTest(unittest.TestCase):
         self.assertIn("RMF_CONTENT_ROOT=/srv/regional-map-deployment", env)
         self.assertIn("RMF_RUNTIME_ROOT=/var/lib/regional-map-framework/regions", env)
         self.assertIn("RMF_ALLOW_REGENERATION=0", env)
+        self.assertIn("RMF_ALLOW_CONTACT_COLLECTION=0", env)
+        self.assertIn("RMF_ADMIN_USERS=map_admin", env)
         self.assertIn("--bind 127.0.0.1", unit)
         self.assertIn("ExecStartPre=/opt/regional-map-framework/current/.venv/bin/python /opt/regional-map-framework/current/manage.py deployment-check", unit)
         self.assertIn("ExecStart=/opt/regional-map-framework/current/.venv/bin/python", unit)
@@ -42,6 +45,7 @@ class FrameworkTest(unittest.TestCase):
         self.assertIn("ProtectSystem=strict", unit)
         self.assertIn("proxy_pass http://127.0.0.1:8000", nginx)
         self.assertIn("node --check core/gallery.js", workflow)
+        self.assertIn("node --check core/contacts.js", workflow)
         self.assertIn("node --check core/map.js", workflow)
         self.assertIn("proxy_set_header X-Forwarded-For $remote_addr", nginx)
         self.assertNotRegex(nginx, r"(?m)^\s*(root|alias|try_files)\s")
@@ -278,11 +282,41 @@ class FrameworkTest(unittest.TestCase):
                 self.assertEqual(login[1]["Referrer-Policy"], "strict-origin-when-cross-origin")
                 cookie = cookie_header.split(";", 1)[0]
                 session = request("/api/session", cookie=cookie)
-                self.assertEqual(json.loads(session[2]), {"username": "map_user"})
+                self.assertEqual(json.loads(session[2]), {"username": "map_user", "is_admin": False})
                 logout = request("/auth/logout", "POST", {}, cookie=cookie)
                 self.assertIn("Max-Age=0", logout[1]["Set-Cookie"])
             finally:
                 server.shutdown(); server.server_close(); thread.join(timeout=5)
+
+    def test_contact_http_api_separates_readers_and_administrators(self):
+        class NoRedirect(urllib.request.HTTPRedirectHandler):
+            def redirect_request(self, *args, **kwargs): return None
+        with tempfile.TemporaryDirectory() as directory:
+            temporary = Path(directory); content = temporary / "content"; root = content / "regions/demo"; runtime = temporary / "runtime"; credentials = temporary / "users.json"
+            (root / "contacts/seeds").mkdir(parents=True); (content / "registry.json").write_text(json.dumps({"schema_version": 1, "default_region": "demo", "regions": ["demo"]}), encoding="utf-8")
+            (root / "region.json").write_text(json.dumps({"region_id": "demo"}), encoding="utf-8")
+            spec = {"schema_version": 1, "region_id": "demo", "enabled": True, "min_interval_seconds": 3600, "request_delay_seconds": 1, "sources": [{"source_id": "seed", "type": "local_json", "path": "contacts/seeds/contacts.json"}]}
+            (root / "contacts/sources.json").write_text(json.dumps(spec), encoding="utf-8"); (root / "contacts/seeds/contacts.json").write_text(json.dumps({"contacts": [{"name": "Agency", "kind": "agency", "phones": ["+79990000000"]}]}), encoding="utf-8")
+            auth.set_user("map_admin", "admin-test-password", credentials); auth.set_user("map_viewer", "viewer-test-password", credentials)
+            environment = {"RMF_AUTH_FILE": str(credentials), "RMF_COOKIE_SECURE": "1", "RMF_CONTENT_ROOT": str(content), "RMF_RUNTIME_ROOT": str(runtime), "RMF_ADMIN_USERS": "map_admin", "RMF_ALLOW_CONTACT_COLLECTION": "0"}
+            with patch.dict(os.environ, environment, clear=False), patch.object(manage, "REGIONS", content / "regions"), patch.object(manage, "RUNTIME_ROOT", runtime):
+                contacts.collect("demo"); contacts.publish("demo", "map_admin")
+                server = serve.ThreadingHTTPServer(("127.0.0.1", 0), serve.Handler); thread = threading.Thread(target=server.serve_forever, daemon=True); thread.start(); opener = urllib.request.build_opener(NoRedirect); base = f"http://127.0.0.1:{server.server_address[1]}"
+                def login(username, password):
+                    data = urllib.parse.urlencode({"username": username, "password": password}).encode(); request = urllib.request.Request(base + "/auth/login", method="POST", data=data, headers={"Content-Type": "application/x-www-form-urlencoded"})
+                    try: opener.open(request, timeout=5)
+                    except urllib.error.HTTPError as error: return error.headers["Set-Cookie"].split(";", 1)[0]
+                def request(path, cookie, method="GET"):
+                    item = urllib.request.Request(base + path, method=method, headers={"Cookie": cookie})
+                    try:
+                        with opener.open(item, timeout=5) as response: return response.status, json.loads(response.read())
+                    except urllib.error.HTTPError as error: return error.code, json.loads(error.read())
+                try:
+                    viewer, admin = login("map_viewer", "viewer-test-password"), login("map_admin", "admin-test-password")
+                    public = request("/api/contacts?region=demo", viewer); self.assertEqual(public[0], 200); self.assertNotIn("published_by", public[1]); self.assertEqual(len(public[1]["contacts"]), 1)
+                    self.assertEqual(request("/api/contacts/status?region=demo", viewer)[0], 403); self.assertEqual(request("/api/contacts/publish?region=demo", viewer, "POST")[0], 403)
+                    self.assertEqual(request("/api/contacts/status?region=demo", admin)[0], 200); self.assertEqual(request("/api/contacts/collect?region=demo", admin, "POST")[0], 403)
+                finally: server.shutdown(); server.server_close(); thread.join(timeout=5)
 
     def test_http_static_allowlist_blocks_project_files(self):
         class NoRedirect(urllib.request.HTTPRedirectHandler):
@@ -299,10 +333,13 @@ class FrameworkTest(unittest.TestCase):
             (project / ".git").mkdir()
             (project / "index.html").write_text("index", encoding="utf-8")
             (project / "map.html").write_text("map page", encoding="utf-8")
+            (project / "contacts.html").write_text("contacts page", encoding="utf-8")
             (project / "core/gallery.js").write_text("gallery", encoding="utf-8")
             (project / "core/gallery.css").write_text("gallery css", encoding="utf-8")
             (project / "core/map.js").write_text("map", encoding="utf-8")
             (project / "core/map.css").write_text("css", encoding="utf-8")
+            (project / "core/contacts.js").write_text("contacts", encoding="utf-8")
+            (project / "core/contacts.css").write_text("contacts css", encoding="utf-8")
             registered = ["demo"]
             (project / "registry.json").write_text(json.dumps({"schema_version": 1, "default_region": "demo", "regions": registered}), encoding="utf-8")
             region = {"region_id": "demo", "layers": {"objects": {"file": "data/objects.geojson"}}}
@@ -358,7 +395,7 @@ class FrameworkTest(unittest.TestCase):
                     self.assertEqual(login.code, 303)
                     cookie = login.headers["Set-Cookie"].split(";", 1)[0]
 
-                    allowed = ["/", "/index.html", "/map.html", "/core/gallery.js", "/core/gallery.css", "/core/map.js", "/core/map.css", "/registry.json", "/regions/demo/region.json", "/regions/demo/data/objects.geojson"]
+                    allowed = ["/", "/index.html", "/map.html", "/contacts.html", "/core/gallery.js", "/core/gallery.css", "/core/map.js", "/core/map.css", "/core/contacts.js", "/core/contacts.css", "/registry.json", "/regions/demo/region.json", "/regions/demo/data/objects.geojson"]
                     if os.name != "nt":
                         allowed.extend(["/regions/linked/region.json", "/regions/linked/data/objects.geojson"])
                     for path in allowed:
@@ -553,6 +590,66 @@ class FrameworkTest(unittest.TestCase):
                 self.assertEqual(regeneration.command_timeout(), 60)
             with patch.dict(os.environ, {"RMF_REGENERATION_TIMEOUT_SECONDS": "broken"}):
                 self.assertEqual(regeneration.command_timeout(), 3600)
+
+    def test_contacts_pipeline_normalizes_deduplicates_and_publishes(self):
+        with tempfile.TemporaryDirectory() as directory:
+            temporary = Path(directory); regions = temporary / "regions"; root = regions / "demo"
+            (root / "contacts/seeds").mkdir(parents=True)
+            (root / "region.json").write_text(json.dumps({"region_id": "demo"}), encoding="utf-8")
+            spec = {"schema_version": 1, "region_id": "demo", "enabled": True, "min_interval_seconds": 3600, "request_delay_seconds": 1, "sources": [{"source_id": "reviewed_seed", "type": "local_json", "path": "contacts/seeds/contacts.json"}]}
+            (root / "contacts/sources.json").write_text(json.dumps(spec), encoding="utf-8")
+            seed = {"contacts": [
+                {"name": "ООО Агентство Дом", "kind": "agency", "coverage": ["Регион"], "phones": ["8 (999) 111-22-33"], "websites": ["https://dom.example/about"]},
+                {"name": "Дом", "kind": "agency", "coverage": ["Регион"], "phones": ["+7 999 111 22 33"], "emails": ["OFFICE@DOM.EXAMPLE"]},
+                {"name": "Публичный брокер", "kind": "broker", "coverage": ["Город"], "emails": ["broker@example.test"]}
+            ]}
+            (root / "contacts/seeds/contacts.json").write_text(json.dumps(seed), encoding="utf-8")
+            runtime = temporary / "runtime"
+            with patch.object(manage, "REGIONS", regions), patch.object(manage, "RUNTIME_ROOT", runtime):
+                state = contacts.collect("demo")
+                self.assertEqual(state["status"], "succeeded")
+                candidate = json.loads((runtime / "demo/contacts/candidates.json").read_text(encoding="utf-8"))
+                self.assertEqual(len(candidate["contacts"]), 2)
+                agency = next(item for item in candidate["contacts"] if item["kind"] == "agency")
+                self.assertEqual(agency["phones"], ["+79991112233"]); self.assertEqual(agency["emails"], ["office@dom.example"]); self.assertEqual(len(agency["sources"]), 1)
+                published = contacts.publish("demo", "map_admin")
+                self.assertEqual(published["published_by"], "map_admin")
+                self.assertTrue(all(item["review_status"] == "published" for item in published["contacts"]))
+                candidate_again = json.loads(json.dumps(published)); candidate_again.pop("published_at"); candidate_again.pop("published_by")
+                for item in candidate_again["contacts"]:
+                    item["review_status"] = "needs_review"
+                    for source in item["sources"]: source["retrieved_at"] = "2099-01-01T00:00:00+00:00"
+                self.assertEqual(contacts.comparison(published, candidate_again)["unchanged"], 2)
+                old_id = candidate_again["contacts"][0]["contact_id"]; candidate_again["contacts"][0]["contact_id"] = "contact_ffffffffffffffff"; candidate_again["contacts"][0]["websites"].append("https://new.example/")
+                contacts.preserve_published_ids(candidate_again["contacts"], published)
+                self.assertEqual(candidate_again["contacts"][0]["contact_id"], old_id)
+                self.assertFalse((runtime / "demo/contacts/.collection.lock").exists())
+
+    def test_contacts_configuration_and_remote_source_boundaries(self):
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory); (root / "contacts").mkdir(); config = {"region_id": "demo"}
+            valid = {"schema_version": 1, "region_id": "demo", "enabled": True, "min_interval_seconds": 3600, "request_delay_seconds": 2, "sources": [{"source_id": "agency", "type": "website", "name": "Agency", "urls": ["https://example.com/contacts"], "allowed_hosts": ["example.com"], "respect_robots_txt": True}]}
+            (root / "contacts/sources.json").write_text(json.dumps(valid), encoding="utf-8")
+            self.assertEqual(manage.validate_contacts(root, config)["region_id"], "demo")
+            valid["sources"][0]["urls"] = ["https://other.example/contacts"]
+            (root / "contacts/sources.json").write_text(json.dumps(valid), encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "not allowlisted"): manage.validate_contacts(root, config)
+            valid["sources"][0]["urls"] = ["http://example.com/contacts"]
+            (root / "contacts/sources.json").write_text(json.dumps(valid), encoding="utf-8")
+            with self.assertRaisesRegex(ValueError, "HTTPS"): manage.validate_contacts(root, config)
+            self.assertIsNone(contacts.normalize_url("file:///etc/passwd"))
+            with patch("pipeline_core.contacts.socket.getaddrinfo", return_value=[(socket.AF_INET, socket.SOCK_STREAM, 6, "", ("127.0.0.1", 443))]):
+                with self.assertRaisesRegex(ValueError, "non-public"): contacts.checked_url("https://example.com/", ["example.com"])
+
+    def test_contacts_frontend_and_admin_boundary_are_explicit(self):
+        page = (manage.ROOT / "contacts.html").read_text(encoding="utf-8")
+        source = (manage.ROOT / "core/contacts.js").read_text(encoding="utf-8")
+        server = (manage.ROOT / "serve.py").read_text(encoding="utf-8")
+        self.assertIn('id="admin-panel"', page); self.assertIn('id="approval-check"', page)
+        self.assertIn("/api/contacts/collect", source); self.assertIn("/api/contacts/publish", source)
+        self.assertIn("RMF_ADMIN_USERS", server); self.assertIn("administrator access required", server)
+        with patch.dict(os.environ, {"RMF_ADMIN_USERS": "map_admin,other"}):
+            self.assertTrue(serve.is_admin("map_admin")); self.assertFalse(serve.is_admin("viewer"))
 
     def test_polygon_fill_zoom_contract(self):
         config = json.loads((manage.ROOT / "templates" / "region.example.json").read_text(encoding="utf-8"))

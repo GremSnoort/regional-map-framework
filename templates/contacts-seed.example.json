@@ -1,0 +1,15 @@
+{
+  "contacts": [
+    {
+      "name": "Пример агентства",
+      "kind": "agency",
+      "coverage": ["Мой регион", "Город"],
+      "specializations": ["коммерческая недвижимость", "торговые помещения"],
+      "phones": ["+7 000 000-00-00"],
+      "emails": ["office@example.com"],
+      "websites": ["https://example.com/"],
+      "addresses": ["Город, улица, дом"],
+      "links": [{"type": "telegram", "label": "Telegram", "url": "https://t.me/example"}]
+    }
+  ]
+}

@@ -1,0 +1,51 @@
+<!doctype html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+  <title>Региональный каталог партнёров</title>
+  <link rel="stylesheet" href="/core/contacts.css">
+</head>
+<body>
+  <header class="site-header">
+    <a class="brand" href="/"><span class="brand-mark">RM</span><span>Региональные карты</span></a>
+    <nav><a id="map-link" href="/">Карта региона</a><a href="/">Все регионы</a></nav>
+    <div class="session"><span id="session-user"></span><form method="post" action="/auth/logout"><button>Выйти</button></form></div>
+  </header>
+  <main>
+    <section class="hero">
+      <p class="eyebrow">Региональный каталог партнёров и источников объектов</p>
+      <h1 id="page-title">Контакты</h1>
+      <p id="page-subtitle">Публичные деловые контакты агентств недвижимости, брокеров, риэлторов, девелоперов и управляющих компаний.</p>
+      <p class="notice">Каталог помогает сформировать список адресатов, но не гарантирует полноту рынка. Перед обращением проверяйте контакт по указанному первоисточнику.</p>
+    </section>
+
+    <section id="admin-panel" class="admin-panel" hidden aria-labelledby="admin-title">
+      <div><p class="eyebrow">Управляемый конвейер</p><h2 id="admin-title">Сбор и публикация</h2></div>
+      <p id="pipeline-state">Загрузка состояния…</p>
+      <div id="pipeline-summary" class="pipeline-summary"></div>
+      <div class="admin-actions">
+        <button id="collect-button" type="button">Собрать кандидатов</button>
+        <button id="review-button" type="button" class="secondary" disabled>Проверить изменения</button>
+        <label class="approval"><input id="approval-check" type="checkbox" disabled> Я проверил изменения</label>
+        <button id="publish-button" type="button" class="publish" disabled>Опубликовать</button>
+      </div>
+      <div id="review-results" class="review-results" hidden></div>
+    </section>
+
+    <section class="catalog" aria-labelledby="catalog-title">
+      <div class="catalog-heading"><div><p class="eyebrow">Опубликованные записи</p><h2 id="catalog-title">Контакты региона</h2></div><p id="catalog-meta"></p></div>
+      <div class="filters">
+        <label>Поиск<input id="search" type="search" placeholder="Название, город, телефон…"></label>
+        <label>Тип<select id="kind-filter"><option value="">Все типы</option></select></label>
+        <label>Территория<select id="coverage-filter"><option value="">Весь регион</option></select></label>
+        <label>Специализация<select id="specialization-filter"><option value="">Все специализации</option></select></label>
+      </div>
+      <div id="catalog-status" class="catalog-status">Загрузка справочника…</div>
+      <div id="contact-list" class="contact-list"></div>
+    </section>
+  </main>
+  <footer>В справочник включаются только публичные профессиональные и деловые контакты с указанием источников и даты получения.</footer>
+  <script type="module" src="/core/contacts.js"></script>
+</body>
+</html>

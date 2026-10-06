@@ -360,3 +360,14 @@ monitor both the public `/healthz` endpoint and certificate renewal. A 200 from
 `/healthz` proves the process is alive, not that every regional dataset is valid,
 so scheduled monitoring should also run `python3 manage.py deployment-check`
 with the production `RMF_CONTENT_ROOT` and `RMF_RUNTIME_ROOT`.
+
+## Enabling the regional contact catalog
+
+Contact collection is independently disabled by default. Review every deployed
+`contacts/sources.json`, then set `RMF_ADMIN_USERS` to existing trusted accounts
+and `RMF_ALLOW_CONTACT_COLLECTION=1` in the production environment. Candidate,
+published and state files are written only below `RMF_RUNTIME_ROOT`, which is
+already the unit's writable state directory. Back up each `contacts/published.json`.
+The collection button never publishes automatically; an administrator must load
+the candidate diff, confirm the review checkbox and invoke the separate publish
+action. See [CONTACTS.md](CONTACTS.md) for the source and runtime contracts.

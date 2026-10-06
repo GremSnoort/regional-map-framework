@@ -1,5 +1,7 @@
 {
   "schema_version": 1,
-  "default_region": null,
-  "regions": []
+  "default_region": "primkrai",
+  "regions": [
+    "primkrai"
+  ]
 }

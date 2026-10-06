@@ -1,0 +1,62 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "contacts-sources.schema.json",
+  "title": "Regional public business contact sources",
+  "type": "object",
+  "required": ["schema_version", "region_id", "enabled", "min_interval_seconds", "request_delay_seconds", "sources"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "region_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9_-]*$"},
+    "enabled": {"type": "boolean"},
+    "min_interval_seconds": {"type": "integer", "minimum": 3600},
+    "request_delay_seconds": {"type": "number", "minimum": 1, "maximum": 60},
+    "sources": {
+      "type": "array",
+      "items": {
+        "oneOf": [
+          {
+            "type": "object",
+            "required": ["source_id", "type", "path"],
+            "properties": {
+              "source_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9_-]*$"},
+              "type": {"const": "local_json"},
+              "path": {"type": "string", "pattern": "^contacts/(?!.*\\.\\.)[^/].+\\.json$"}
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": ["source_id", "type", "url", "allowed_hosts"],
+            "properties": {
+              "source_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9_-]*$"},
+              "type": {"const": "remote_json"},
+              "url": {"type": "string", "pattern": "^https://"},
+              "allowed_hosts": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "pattern": "^[a-z0-9.-]+$"}},
+              "contacts_key": {"type": "string", "minLength": 1}
+            },
+            "additionalProperties": false
+          },
+          {
+            "type": "object",
+            "required": ["source_id", "type", "name", "urls", "allowed_hosts"],
+            "properties": {
+              "source_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9_-]*$"},
+              "type": {"const": "website"},
+              "name": {"type": "string", "minLength": 1},
+              "kind": {"enum": ["agency", "realtor", "broker", "developer", "property_manager", "other"]},
+              "coverage": {"type": "array", "items": {"type": "string", "minLength": 1}},
+              "specializations": {"type": "array", "items": {"type": "string", "minLength": 1}},
+              "addresses": {"type": "array", "items": {"type": "string", "minLength": 1}},
+              "urls": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "pattern": "^https://"}},
+              "allowed_hosts": {"type": "array", "minItems": 1, "uniqueItems": true, "items": {"type": "string", "pattern": "^[a-z0-9.-]+$"}},
+              "respect_robots_txt": {"type": "boolean"},
+              "request_delay_seconds": {"type": "number", "minimum": 1, "maximum": 60}
+            },
+            "additionalProperties": false
+          }
+        ]
+      }
+    }
+  },
+  "additionalProperties": false
+}

@@ -1,0 +1,38 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "contact-catalog.schema.json",
+  "title": "Published regional partner catalog",
+  "type": "object",
+  "required": ["schema_version", "region_id", "contacts"],
+  "properties": {
+    "schema_version": {"const": 1},
+    "region_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9_-]*$"},
+    "generated_at": {"type": "string"},
+    "published_at": {"type": "string"},
+    "published_by": {"type": "string"},
+    "source_errors": {"type": "array"},
+    "contacts": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": ["contact_id", "name", "kind", "coverage", "specializations", "phones", "emails", "websites", "addresses", "links", "sources", "review_status"],
+        "properties": {
+          "contact_id": {"type": "string", "pattern": "^[a-z0-9][a-z0-9_-]{2,63}$"},
+          "name": {"type": "string", "minLength": 1},
+          "kind": {"enum": ["agency", "realtor", "broker", "developer", "property_manager", "other"]},
+          "coverage": {"type": "array", "items": {"type": "string"}},
+          "specializations": {"type": "array", "items": {"type": "string"}},
+          "phones": {"type": "array", "items": {"type": "string"}},
+          "emails": {"type": "array", "items": {"type": "string", "format": "email"}},
+          "websites": {"type": "array", "items": {"type": "string", "format": "uri"}},
+          "addresses": {"type": "array", "items": {"type": "string"}},
+          "links": {"type": "array", "items": {"type": "object", "required": ["type", "label", "url"]}},
+          "sources": {"type": "array", "items": {"type": "object", "required": ["source_id", "retrieved_at"]}},
+          "review_status": {"enum": ["needs_review", "published"]}
+        },
+        "additionalProperties": false
+      }
+    }
+  },
+  "additionalProperties": true
+}

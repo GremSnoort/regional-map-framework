@@ -1,0 +1,238 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Primorye corrected housing evidence v3",
+  "description": "Evidence inventory only; no cadastral/occupancy confirmations or population overrides. Semantic checks: verify_housing_v3.py.",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "osm_id",
+    "geometry_sha256",
+    "canonical_geometry_member",
+    "allocation_role",
+    "match",
+    "fields",
+    "address_evidence",
+    "address_conflict",
+    "current_residents",
+    "current_occupied_fraction",
+    "occupancy_verified",
+    "weight_override_allowed"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 3
+    },
+    "osm_id": {
+      "type": "string",
+      "pattern": "^(way|relation)/[0-9]+$"
+    },
+    "geometry_sha256": {
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "canonical_geometry_member": {
+      "type": "string",
+      "pattern": "^(way|relation)/[0-9]+$"
+    },
+    "allocation_role": {
+      "enum": [
+        "geometry_primary",
+        "duplicate_geometry_shadow"
+      ]
+    },
+    "address_conflict": {
+      "type": "boolean"
+    },
+    "address_evidence": {
+      "type": "array",
+      "minItems": 1
+    },
+    "current_residents": {
+      "type": "null"
+    },
+    "current_occupied_fraction": {
+      "type": "null"
+    },
+    "occupancy_verified": {
+      "const": false
+    },
+    "weight_override_allowed": {
+      "const": false
+    },
+    "match": {
+      "type": "object",
+      "required": [
+        "status",
+        "links",
+        "geometry_verified",
+        "canonical_house_id"
+      ],
+      "properties": {
+        "status": {
+          "enum": [
+            "unmatched",
+            "address_candidate",
+            "context_candidate",
+            "quarantined",
+            "ambiguous",
+            "alias_review"
+          ]
+        },
+        "links": {
+          "type": "array"
+        },
+        "geometry_verified": {
+          "const": false
+        },
+        "canonical_house_id": {
+          "type": "null"
+        }
+      }
+    },
+    "fields": {
+      "type": "object",
+      "required": [
+        "house_type",
+        "use",
+        "above_ground_storeys",
+        "gross_building_area_m2",
+        "premises_total_area_m2",
+        "residential_premises_area_m2",
+        "apartments",
+        "occupied_fraction",
+        "mean_household_size"
+      ],
+      "properties": {
+        "house_type": {
+          "$ref": "#/$defs/field"
+        },
+        "use": {
+          "$ref": "#/$defs/field"
+        },
+        "above_ground_storeys": {
+          "$ref": "#/$defs/field"
+        },
+        "gross_building_area_m2": {
+          "$ref": "#/$defs/field"
+        },
+        "premises_total_area_m2": {
+          "$ref": "#/$defs/field"
+        },
+        "residential_premises_area_m2": {
+          "$ref": "#/$defs/field"
+        },
+        "apartments": {
+          "$ref": "#/$defs/field"
+        },
+        "occupied_fraction": {
+          "$ref": "#/$defs/field"
+        },
+        "mean_household_size": {
+          "$ref": "#/$defs/field"
+        }
+      },
+      "additionalProperties": false
+    }
+  },
+  "$defs": {
+    "field": {
+      "type": "object",
+      "required": [
+        "value",
+        "status",
+        "observations"
+      ],
+      "properties": {
+        "value": {
+          "type": [
+            "number",
+            "string",
+            "null"
+          ]
+        },
+        "status": {
+          "enum": [
+            "unknown",
+            "reported",
+            "conflicting"
+          ]
+        },
+        "observations": {
+          "type": "array",
+          "items": {
+            "$ref": "#/$defs/observation"
+          }
+        },
+        "reviewer": {
+          "type": "string",
+          "minLength": 1
+        },
+        "reviewed_at": {
+          "type": "string",
+          "minLength": 1
+        }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": {
+              "status": {
+                "enum": [
+                  "unknown",
+                  "conflicting"
+                ]
+              }
+            }
+          },
+          "then": {
+            "properties": {
+              "value": {
+                "type": "null"
+              }
+            }
+          }
+        }
+      ],
+      "additionalProperties": false
+    },
+    "observation": {
+      "type": "object",
+      "required": [
+        "value",
+        "source_id",
+        "locator",
+        "as_of",
+        "scope"
+      ],
+      "properties": {
+        "value": {
+          "type": [
+            "number",
+            "string"
+          ]
+        },
+        "source_id": {
+          "type": "string",
+          "minLength": 1
+        },
+        "locator": {
+          "type": "string",
+          "minLength": 1
+        },
+        "as_of": {
+          "type": [
+            "string",
+            "null"
+          ]
+        },
+        "scope": {
+          "type": [
+            "string",
+            "null"
+          ]
+        }
+      },
+      "additionalProperties": false
+    }
+  }
+}

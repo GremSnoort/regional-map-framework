@@ -1,0 +1,913 @@
+{
+  "schema_version": 2,
+  "core_version": "2.1.0",
+  "region_id": "primkrai",
+  "lifecycle": "draft",
+  "data_mode": "pipeline",
+  "title": "Приморский край — районы, дороги и «Пятёрочка»",
+  "page_title": "Приморский край — районы, дороги и «Пятёрочка» — аналитическая карта X5",
+  "subtitle": "Муниципалитеты, населённые пункты, дороги, публичные карточки магазинов и индикативный приоритет новых открытий.",
+  "source_note": "Набор собран строго из сохранённых файлов старого проекта analytical_maps/primkrai; все входы независимо скопированы в новый проект. Население: старые XLSX Росстата на 01.01.2025 и перепись на 01.10.2021; точные листы и ячейки задокументированы. Геометрия OSM на 08.09.2026. Площади WGS84, локальная сетка — расчётная модель по исходным тегам зданий. Внешние характеристики жилья не применяются. Даты первичных данных не обновлены. Источники и ограничения: LOCAL_DATA_SETUP.md.",
+  "view": {
+    "center": [
+      43.7,
+      133.2
+    ],
+    "zoom": 6,
+    "min_zoom": 4,
+    "max_zoom": 18
+  },
+  "layers": {
+    "municipalities": {
+      "file": "data/municipalities.geojson",
+      "label": "Расчётная плотность муниципалитетов",
+      "renderer": "choropleth",
+      "geometry_types": [
+        "Polygon",
+        "MultiPolygon"
+      ],
+      "required_properties": [
+        "municipality_name",
+        "population",
+        "area_km2",
+        "density_per_km2",
+        "statistics_source_url",
+        "statistics_source_cells",
+        "area_quality"
+      ],
+      "numeric_properties": [
+        "population",
+        "area_km2",
+        "density_per_km2"
+      ],
+      "required_for_production": true,
+      "default_visible": true,
+      "fit_bounds": true,
+      "title_field": "municipality_name",
+      "value_field": "density_per_km2",
+      "bins": [
+        {
+          "max": 0.25,
+          "label": "< 0,25",
+          "color": "#f7fbff"
+        },
+        {
+          "max": 0.5,
+          "label": "0,25–0,5",
+          "color": "#deebf7"
+        },
+        {
+          "max": 1,
+          "label": "0,5–1",
+          "color": "#c6dbef"
+        },
+        {
+          "max": 2,
+          "label": "1–2",
+          "color": "#9ecae1"
+        },
+        {
+          "max": 4,
+          "label": "2–4",
+          "color": "#6baed6"
+        },
+        {
+          "max": 8,
+          "label": "4–8",
+          "color": "#4292c6"
+        },
+        {
+          "max": 15,
+          "label": "8–15",
+          "color": "#2171b5"
+        },
+        {
+          "max": 30,
+          "label": "15–30",
+          "color": "#08519c"
+        },
+        {
+          "max": 100,
+          "label": "30–100",
+          "color": "#6a51a3"
+        },
+        {
+          "max": null,
+          "label": "≥ 100",
+          "color": "#3f007d"
+        }
+      ],
+      "popup_fields": [
+        {
+          "field": "population",
+          "label": "Население",
+          "type": "number"
+        },
+        {
+          "field": "area_km2",
+          "label": "Площадь",
+          "type": "decimal",
+          "suffix": " км²"
+        },
+        {
+          "field": "density_per_km2",
+          "label": "Плотность",
+          "type": "decimal",
+          "suffix": " чел./км²"
+        },
+        {
+          "field": "statistics_as_of",
+          "label": "Дата населения"
+        },
+        {
+          "field": "statistics_source_cells",
+          "label": "Ячейка таблицы Росстата"
+        },
+        {
+          "field": "statistics_source_url",
+          "label": "Таблица Росстата",
+          "type": "url"
+        },
+        {
+          "field": "area_method",
+          "label": "Расчёт площади"
+        },
+        {
+          "field": "area_quality",
+          "label": "Статус площади"
+        }
+      ],
+      "style": {
+        "stroke": "#2f3b45",
+        "weight": 1.25,
+        "fill_opacity": 0.7,
+        "fill_max_zoom": 9.75,
+        "fill_opacity_above_max": 0
+      },
+      "z_index": 300
+    },
+    "settlements": {
+      "file": "data/settlements.geojson",
+      "label": "Все населённые пункты",
+      "renderer": "points",
+      "geometry_types": [
+        "Point"
+      ],
+      "required_properties": [
+        "name"
+      ],
+      "numeric_properties": [
+        "population"
+      ],
+      "required_for_production": true,
+      "default_visible": true,
+      "fit_bounds": false,
+      "title_field": "name",
+      "label_field": "name",
+      "label_min_field": "population",
+      "label_min_value": 3000,
+      "popup_fields": [
+        {
+          "field": "population",
+          "label": "Население",
+          "type": "number"
+        },
+        {
+          "field": "district",
+          "label": "Муниципалитет"
+        },
+        {
+          "field": "population_source_url",
+          "label": "Источник",
+          "type": "url",
+          "link_label": "открыть"
+        },
+        {
+          "field": "population_as_of",
+          "label": "Дата населения"
+        },
+        {
+          "field": "population_quality",
+          "label": "Статус населения"
+        },
+        {
+          "field": "source_sheet",
+          "label": "Лист источника"
+        },
+        {
+          "field": "source_cell",
+          "label": "Ячейка источника"
+        },
+        {
+          "field": "population_warning",
+          "label": "Ограничение"
+        }
+      ],
+      "style": {
+        "radius": 2.2,
+        "color": "#4f5962",
+        "fill_opacity": 0.85
+      },
+      "z_index": 500
+    },
+    "stores": {
+      "file": "data/stores.geojson",
+      "label": "Пятёрочка — каталог 5dfo.ru",
+      "renderer": "points",
+      "geometry_types": [
+        "Point"
+      ],
+      "required_properties": [
+        "name"
+      ],
+      "numeric_properties": [],
+      "required_for_production": true,
+      "default_visible": true,
+      "fit_bounds": false,
+      "title_field": "name",
+      "popup_fields": [
+        {
+          "field": "address",
+          "label": "Адрес"
+        },
+        {
+          "field": "locality",
+          "label": "Населённый пункт"
+        },
+        {
+          "field": "catalog_status",
+          "label": "Статус"
+        },
+        {
+          "field": "yandex_url",
+          "label": "Яндекс",
+          "type": "url",
+          "link_label": "открыть"
+        },
+        {
+          "field": "2gis_url",
+          "label": "2ГИС",
+          "type": "url",
+          "link_label": "открыть"
+        },
+        {
+          "field": "source_url",
+          "label": "Источник",
+          "type": "url",
+          "link_label": "открыть"
+        }
+      ],
+      "style": {
+        "radius": 7,
+        "color": "#e31b23",
+        "stroke": "#ffffff",
+        "fill_opacity": 1,
+        "weight": 2
+      },
+      "z_index": 760
+    },
+    "priority": {
+      "file": "data/expansion_priority.geojson",
+      "label": "Приоритет новых открытий (модель)",
+      "renderer": "ranking",
+      "geometry_types": [
+        "Point"
+      ],
+      "required_properties": [
+        "name",
+        "priority_score",
+        "estimated_additional_capacity"
+      ],
+      "numeric_properties": [
+        "priority_score",
+        "estimated_additional_capacity",
+        "population"
+      ],
+      "required_for_production": true,
+      "default_visible": true,
+      "fit_bounds": false,
+      "title_field": "name",
+      "value_field": "priority_score",
+      "size_field": "estimated_additional_capacity",
+      "bins": [
+        {
+          "max": 30,
+          "label": "исчерпан",
+          "color": "#e5f5e0"
+        },
+        {
+          "max": 50,
+          "label": "низкий",
+          "color": "#a1d99b"
+        },
+        {
+          "max": 65,
+          "label": "средний",
+          "color": "#74c476"
+        },
+        {
+          "max": 80,
+          "label": "высокий",
+          "color": "#31a354"
+        },
+        {
+          "max": null,
+          "label": "очень высокий",
+          "color": "#006d2c"
+        }
+      ],
+      "popup_fields": [
+        {
+          "field": "priority",
+          "label": "Приоритет"
+        },
+        {
+          "field": "priority_score",
+          "label": "Оценка",
+          "type": "number",
+          "suffix": "/100"
+        },
+        {
+          "field": "population",
+          "label": "Население",
+          "type": "number"
+        },
+        {
+          "field": "existing_pyaterochka_cards",
+          "label": "Найдено",
+          "type": "number"
+        },
+        {
+          "field": "estimated_additional_capacity",
+          "label": "Потенциал",
+          "type": "number"
+        },
+        {
+          "field": "nearest_existing_store_km",
+          "label": "До магазина",
+          "type": "decimal",
+          "suffix": " км"
+        }
+      ],
+      "style": {
+        "radius": 6,
+        "radius_scale": 1.15,
+        "min_radius": 6,
+        "max_radius": 16,
+        "stroke": "#145a32",
+        "fill_opacity": 0.82
+      },
+      "table": {
+        "enabled": true,
+        "title": "Населённые пункты с потенциалом открытия",
+        "sort": [
+          {
+            "field": "priority_score",
+            "direction": "desc"
+          }
+        ],
+        "columns": [
+          {
+            "field": "name",
+            "label": "Населённый пункт",
+            "bold": true
+          },
+          {
+            "field": "priority_score",
+            "label": "Приоритет",
+            "type": "number"
+          },
+          {
+            "field": "population",
+            "label": "Население",
+            "type": "number"
+          },
+          {
+            "field": "existing_pyaterochka_cards",
+            "label": "Найдено",
+            "type": "number"
+          },
+          {
+            "field": "estimated_additional_capacity",
+            "label": "Потенциал",
+            "type": "number"
+          }
+        ],
+        "related_layer": "settlement_density",
+        "related_value_field": "settlement_key",
+        "related_join_field": "settlement_key"
+      },
+      "z_index": 700
+    },
+    "major_roads": {
+      "file": "data/major_roads.geojson",
+      "label": "Основные межмуниципальные дороги",
+      "renderer": "lines",
+      "geometry_types": [
+        "LineString",
+        "MultiLineString"
+      ],
+      "required_properties": [],
+      "numeric_properties": [],
+      "required_for_production": true,
+      "default_visible": true,
+      "fit_bounds": false,
+      "title_field": "name",
+      "popup_fields": [
+        {
+          "field": "name",
+          "label": "Название"
+        },
+        {
+          "field": "ref",
+          "label": "Номер"
+        }
+      ],
+      "style": {
+        "color": "#52606d",
+        "weight": 2.2,
+        "opacity": 0.8
+      },
+      "z_index": 420
+    },
+    "federal_roads": {
+      "file": "data/federal_roads.geojson",
+      "label": "Федеральные трассы",
+      "renderer": "lines",
+      "geometry_types": [
+        "LineString",
+        "MultiLineString"
+      ],
+      "required_properties": [],
+      "numeric_properties": [],
+      "required_for_production": true,
+      "default_visible": true,
+      "fit_bounds": false,
+      "title_field": "ref",
+      "popup_fields": [
+        {
+          "field": "ref",
+          "label": "Трасса"
+        },
+        {
+          "field": "name",
+          "label": "Название"
+        }
+      ],
+      "style": {
+        "color": "#c62828",
+        "weight": 4,
+        "opacity": 0.9
+      },
+      "z_index": 430
+    },
+    "settlement_density": {
+      "file": "data/settlement_density.geojson",
+      "label": "Модель плотности: подтверждено население",
+      "renderer": "density",
+      "geometry_types": [
+        "Polygon",
+        "MultiPolygon"
+      ],
+      "required_properties": [
+        "cell_id",
+        "settlement_key",
+        "settlement_name",
+        "population_control",
+        "population_estimate",
+        "cell_area_km2",
+        "grid_metres",
+        "density_per_km2",
+        "population_quality",
+        "population_source_url"
+      ],
+      "numeric_properties": [
+        "population_control",
+        "population_estimate",
+        "cell_area_km2",
+        "grid_metres",
+        "density_per_km2"
+      ],
+      "required_for_production": true,
+      "default_visible": true,
+      "fit_bounds": false,
+      "title_field": "settlement_name",
+      "value_field": "density_per_km2",
+      "bins": [
+        {
+          "max": 500,
+          "label": "< 500",
+          "color": "#ffffcc"
+        },
+        {
+          "max": 1500,
+          "label": "500–1 500",
+          "color": "#d9f0a3"
+        },
+        {
+          "max": 3000,
+          "label": "1 500–3 000",
+          "color": "#addd8e"
+        },
+        {
+          "max": 6000,
+          "label": "3 000–6 000",
+          "color": "#78c679"
+        },
+        {
+          "max": 10000,
+          "label": "6 000–10 000",
+          "color": "#31a354"
+        },
+        {
+          "max": 18000,
+          "label": "10 000–18 000",
+          "color": "#fdae61"
+        },
+        {
+          "max": 28000,
+          "label": "18 000–28 000",
+          "color": "#f46d43"
+        },
+        {
+          "max": null,
+          "label": "28 000+",
+          "color": "#a50026"
+        }
+      ],
+      "min_zoom": 10,
+      "popup_fields": [
+        {
+          "field": "settlement_name",
+          "label": "Населённый пункт"
+        },
+        {
+          "field": "municipality",
+          "label": "Муниципалитет"
+        },
+        {
+          "field": "population_estimate",
+          "label": "Модельная численность в ячейке",
+          "type": "decimal"
+        },
+        {
+          "field": "density_per_km2",
+          "label": "Модельная плотность",
+          "type": "decimal",
+          "suffix": " чел./км²"
+        },
+        {
+          "field": "grid_metres",
+          "label": "Шаг исходной сетки",
+          "type": "number",
+          "suffix": " м"
+        },
+        {
+          "field": "cell_area_m2",
+          "label": "Фактическая площадь ячейки",
+          "type": "number",
+          "suffix": " м²"
+        },
+        {
+          "field": "cell_clipped",
+          "label": "Ячейка обрезана границей"
+        },
+        {
+          "field": "building_count",
+          "label": "Зданий в ячейке",
+          "type": "number"
+        },
+        {
+          "field": "residential_floor_proxy_m2",
+          "label": "Прокси жилой площади",
+          "type": "number",
+          "suffix": " м²"
+        },
+        {
+          "field": "explicit_residential_percent",
+          "label": "Явно жилые здания (доля прокси)",
+          "type": "decimal",
+          "suffix": "%"
+        },
+        {
+          "field": "observed_storeys_percent",
+          "label": "Этажность указана в OSM (доля прокси)",
+          "type": "decimal",
+          "suffix": "%"
+        },
+        {
+          "field": "population_control",
+          "label": "Контроль населения пункта",
+          "type": "number"
+        },
+        {
+          "field": "population_as_of",
+          "label": "Дата контроля"
+        },
+        {
+          "field": "population_source_sheet",
+          "label": "Лист Росстата"
+        },
+        {
+          "field": "population_source_cell",
+          "label": "Ячейка Росстата"
+        },
+        {
+          "field": "population_source_url",
+          "label": "Источник населения",
+          "type": "url"
+        },
+        {
+          "field": "confidence",
+          "label": "Качество локальной модели"
+        },
+        {
+          "field": "model_review_status",
+          "label": "Проверка застройки"
+        },
+        {
+          "field": "model_warning",
+          "label": "Ограничение"
+        },
+        {
+          "field": "verified_residential_area_percent",
+          "label": "Площадь жилых помещений подтверждена (доля прокси)",
+          "type": "decimal",
+          "suffix": "%"
+        },
+        {
+          "field": "verified_storeys_percent",
+          "label": "Этажность проверена по первичному источнику (доля прокси)",
+          "type": "decimal",
+          "suffix": "%"
+        }
+      ],
+      "style": {
+        "stroke": "#fff",
+        "weight": 0.35,
+        "fill_opacity": 0.72
+      },
+      "z_index": 380,
+      "external_map_link": {
+        "provider": "yandex_maps",
+        "label": "Открыть центр ячейки в Яндекс Картах"
+      },
+      "legend_title": "Модельная плотность, чел./км²",
+      "unique_by": [
+        "cell_id"
+      ]
+    },
+    "settlement_density_unverified": {
+      "file": "data/settlement_density_unverified.geojson",
+      "label": "Модель плотности: население OSM не подтверждено",
+      "renderer": "polygons",
+      "geometry_types": [
+        "Polygon",
+        "MultiPolygon"
+      ],
+      "required_properties": [
+        "cell_id",
+        "settlement_key",
+        "settlement_name",
+        "population_control",
+        "population_estimate",
+        "cell_area_km2",
+        "grid_metres",
+        "density_per_km2",
+        "population_quality",
+        "population_source_url"
+      ],
+      "numeric_properties": [
+        "population_control",
+        "population_estimate",
+        "cell_area_km2",
+        "grid_metres",
+        "density_per_km2"
+      ],
+      "required_for_production": true,
+      "default_visible": false,
+      "fit_bounds": false,
+      "title_field": "settlement_name",
+      "min_zoom": 10,
+      "popup_fields": [
+        {
+          "field": "settlement_name",
+          "label": "Населённый пункт"
+        },
+        {
+          "field": "municipality",
+          "label": "Муниципалитет"
+        },
+        {
+          "field": "population_estimate",
+          "label": "Модельная численность в ячейке",
+          "type": "decimal"
+        },
+        {
+          "field": "density_per_km2",
+          "label": "Модельная плотность",
+          "type": "decimal",
+          "suffix": " чел./км²"
+        },
+        {
+          "field": "grid_metres",
+          "label": "Шаг исходной сетки",
+          "type": "number",
+          "suffix": " м"
+        },
+        {
+          "field": "cell_area_m2",
+          "label": "Фактическая площадь ячейки",
+          "type": "number",
+          "suffix": " м²"
+        },
+        {
+          "field": "cell_clipped",
+          "label": "Ячейка обрезана границей"
+        },
+        {
+          "field": "building_count",
+          "label": "Зданий в ячейке",
+          "type": "number"
+        },
+        {
+          "field": "residential_floor_proxy_m2",
+          "label": "Прокси жилой площади",
+          "type": "number",
+          "suffix": " м²"
+        },
+        {
+          "field": "explicit_residential_percent",
+          "label": "Явно жилые здания (доля прокси)",
+          "type": "decimal",
+          "suffix": "%"
+        },
+        {
+          "field": "observed_storeys_percent",
+          "label": "Этажность указана в OSM (доля прокси)",
+          "type": "decimal",
+          "suffix": "%"
+        },
+        {
+          "field": "population_control",
+          "label": "Контроль населения пункта",
+          "type": "number"
+        },
+        {
+          "field": "population_as_of",
+          "label": "Дата контроля"
+        },
+        {
+          "field": "population_source_sheet",
+          "label": "Лист Росстата"
+        },
+        {
+          "field": "population_source_cell",
+          "label": "Ячейка Росстата"
+        },
+        {
+          "field": "population_source_url",
+          "label": "Источник населения",
+          "type": "url"
+        },
+        {
+          "field": "confidence",
+          "label": "Качество локальной модели"
+        },
+        {
+          "field": "model_review_status",
+          "label": "Проверка застройки"
+        },
+        {
+          "field": "model_warning",
+          "label": "Ограничение"
+        },
+        {
+          "field": "verified_residential_area_percent",
+          "label": "Площадь жилых помещений подтверждена (доля прокси)",
+          "type": "decimal",
+          "suffix": "%"
+        },
+        {
+          "field": "verified_storeys_percent",
+          "label": "Этажность проверена по первичному источнику (доля прокси)",
+          "type": "decimal",
+          "suffix": "%"
+        }
+      ],
+      "style": {
+        "color": "#94a3b8",
+        "stroke": "#475569",
+        "weight": 1,
+        "fill_opacity": 0.3
+      },
+      "z_index": 381,
+      "external_map_link": {
+        "provider": "yandex_maps",
+        "label": "Открыть центр ячейки в Яндекс Картах"
+      },
+      "unique_by": [
+        "cell_id"
+      ]
+    },
+    "housing_review": {
+      "file": "data/housing_review.geojson",
+      "label": "Жилой фонд — очередь проверки",
+      "renderer": "polygons",
+      "geometry_types": [
+        "Polygon",
+        "MultiPolygon"
+      ],
+      "required_properties": [
+        "osm_id",
+        "address",
+        "match_status"
+      ],
+      "numeric_properties": [],
+      "required_for_production": false,
+      "default_visible": false,
+      "fit_bounds": false,
+      "title_field": "address",
+      "min_zoom": 13,
+      "popup_fields": [
+        {
+          "field": "match_status_label",
+          "label": "Сопоставление контура"
+        },
+        {
+          "field": "use_status_label",
+          "label": "Проверка назначения"
+        },
+        {
+          "field": "above_ground_storeys_value",
+          "label": "Сообщённая этажность"
+        },
+        {
+          "field": "above_ground_storeys_status_label",
+          "label": "Проверка этажности"
+        },
+        {
+          "field": "residential_premises_area_m2_value",
+          "label": "Площадь жилых помещений, м²"
+        },
+        {
+          "field": "residential_premises_area_m2_status_label",
+          "label": "Проверка площади"
+        },
+        {
+          "field": "apartments_value",
+          "label": "Квартиры"
+        },
+        {
+          "field": "apartments_status_label",
+          "label": "Проверка квартир"
+        },
+        {
+          "field": "applied_fields",
+          "label": "Применено в модели"
+        },
+        {
+          "field": "review_notes",
+          "label": "Результат проверки"
+        },
+        {
+          "field": "source_url",
+          "label": "Источник исходных данных",
+          "type": "url"
+        },
+        {
+          "field": "gis_url",
+          "label": "Карточка ГИС ЖКХ",
+          "type": "url"
+        },
+        {
+          "field": "osm_url",
+          "label": "Контур OSM",
+          "type": "url"
+        }
+      ],
+      "style": {
+        "color": "#64748b",
+        "stroke": "#334155",
+        "weight": 1.5,
+        "fill_opacity": 0.22
+      },
+      "z_index": 520,
+      "unique_by": [
+        "osm_id"
+      ]
+    }
+  },
+  "expected": {
+    "municipalities": 33,
+    "settlements": 647,
+    "stores": 166,
+    "priority": 68,
+    "major_roads": 5764,
+    "federal_roads": 807,
+    "settlement_density": 41921,
+    "settlement_density_unverified": 1299,
+    "housing_review": 6566
+  },
+  "status_note": "Строго локальная сборка из старых исходников. Локальная плотность модельная; назначение, этажность и заселённость части зданий требуют проверки. Регион draft."
+}

@@ -9,6 +9,7 @@ from http.server import SimpleHTTPRequestHandler,ThreadingHTTPServer
 from pathlib import Path
 from urllib.parse import parse_qs,quote,unquote,urlparse,urlsplit
 import auth
+from pipeline_core import contacts
 
 ROOT=Path(__file__).resolve().parent;COOKIE_NAME="rmf_session";LOGIN_LIMIT=5;LOGIN_WINDOW_SECONDS=15*60
 FAILURES={};FAILURES_LOCK=threading.Lock()
@@ -35,7 +36,7 @@ def stale_lock(lock):
  try:return not process_alive(int(lock.read_text(encoding="ascii").strip()))
  except (OSError,ValueError):return False
 def reserve_lock(lock):
- lock.parent.mkdir(exist_ok=True)
+ lock.parent.mkdir(parents=True,exist_ok=True)
  for attempt in range(2):
   try:fd=os.open(lock,os.O_CREAT|os.O_EXCL|os.O_WRONLY)
   except FileExistsError:
@@ -84,6 +85,9 @@ def same_origin(handler):
  if handler.headers.get("Sec-Fetch-Site","").lower()=="cross-site":return False
  origin=handler.headers.get("Origin")
  return not origin or urlparse(origin).netloc==handler.headers.get("Host","")
+def admin_users():
+ return {item.strip() for item in os.environ.get("RMF_ADMIN_USERS", "").split(",") if item.strip()}
+def is_admin(username):return bool(username) and username in admin_users()
 def registered_regions():
  value=payload(content_root()/"registry.json",{})
  regions=value.get("regions",[])
@@ -97,7 +101,7 @@ def public_file(request_path):
  try:path=unquote(request_path,errors="strict")
  except (UnicodeDecodeError,UnicodeEncodeError):return None
  if "\0" in path or "\\" in path or "//" in path:return None
- fixed={"/":"index.html","/index.html":"index.html","/map.html":"map.html","/core/gallery.js":"core/gallery.js","/core/gallery.css":"core/gallery.css","/core/map.js":"core/map.js","/core/map.css":"core/map.css"}
+ fixed={"/":"index.html","/index.html":"index.html","/map.html":"map.html","/contacts.html":"contacts.html","/core/gallery.js":"core/gallery.js","/core/gallery.css":"core/gallery.css","/core/map.js":"core/map.js","/core/map.css":"core/map.css","/core/contacts.js":"core/contacts.js","/core/contacts.css":"core/contacts.css"}
  if path=="/registry.json":
   root=content_root();candidate=root/"registry.json"
   try:resolved=candidate.resolve(strict=True);safe_root=root.resolve(strict=True)
@@ -194,7 +198,23 @@ class Handler(SimpleHTTPRequestHandler):
    if self.username():return self.redirect(next_url)
    return self.html(HTTPStatus.OK,login_page(next_url))
   if not self.require_login(api=path.startswith("/api/")):return
-  if path=="/api/session":return self.reply(HTTPStatus.OK,{"username":self.username()})
+  if path=="/api/session":return self.reply(HTTPStatus.OK,{"username":self.username(),"is_admin":is_admin(self.username())})
+  if path in {"/api/contacts","/api/contacts/status","/api/contacts/candidates"}:
+   root,_=self.api_region()
+   if not root:return self.reply(HTTPStatus.BAD_REQUEST,{"error":"invalid region"})
+   try:spec=contacts.manage.validate_contacts(root,contacts.manage.read_json(root/"region.json"))
+   except (OSError,ValueError,json.JSONDecodeError) as error:return self.reply(HTTPStatus.INTERNAL_SERVER_ERROR,{"error":str(error)})
+   if not spec or not spec.get("enabled"):return self.reply(HTTPStatus.NOT_FOUND,{"enabled":False})
+   target=contacts.paths(root)
+   if path=="/api/contacts":
+    try:value=contacts.validate_catalog(contacts.manage.read_json(target["published"]),root.name,allow_candidates=False) if target["published"].is_file() else {"schema_version":1,"region_id":root.name,"contacts":[]}
+    except (OSError,ValueError,json.JSONDecodeError) as error:return self.reply(HTTPStatus.INTERNAL_SERVER_ERROR,{"error":f"published contact catalog is invalid: {error}"})
+    value=dict(value);value.pop("published_by",None);value["enabled"]=True;return self.reply(HTTPStatus.OK,value)
+   if not is_admin(self.username()):return self.reply(HTTPStatus.FORBIDDEN,{"error":"administrator access required"})
+   if path=="/api/contacts/candidates":
+    if not target["candidates"].is_file():return self.reply(HTTPStatus.NOT_FOUND,{"error":"candidate catalog is missing"})
+    return self.reply(HTTPStatus.OK,payload(target["candidates"],{}))
+   value=payload(target["state"],{"status":"never"});value|={"enabled":True,"min_interval_seconds":max(3600,int(spec["min_interval_seconds"])),"has_candidates":target["candidates"].is_file(),"has_publication":target["published"].is_file()};return self.reply(HTTPStatus.OK,value)
   if path=="/api/regeneration":
    root,state=self.api_region()
    if not root or not (root/"pipeline/regeneration.json").is_file():return self.reply(HTTPStatus.NOT_FOUND,{"enabled":False})
@@ -214,6 +234,33 @@ class Handler(SimpleHTTPRequestHandler):
    return self.redirect(next_url,"; ".join(attributes))
   if path=="/auth/logout":return self.redirect("/login",f"{COOKIE_NAME}=; Path=/; HttpOnly; SameSite=Strict; Max-Age=0")
   if not self.require_login(api=True):return
+  if path in {"/api/contacts/collect","/api/contacts/publish"}:
+   if not is_admin(self.username()):return self.reply(HTTPStatus.FORBIDDEN,{"error":"administrator access required"})
+   if os.environ.get("RMF_ALLOW_CONTACT_COLLECTION")!="1":return self.reply(HTTPStatus.FORBIDDEN,{"error":"contact collection and publication are disabled"})
+   root,_=self.api_region()
+   if not root:return self.reply(HTTPStatus.BAD_REQUEST,{"error":"invalid region"})
+   try:spec=contacts.manage.validate_contacts(root,contacts.manage.read_json(root/"region.json"))
+   except (OSError,ValueError,json.JSONDecodeError) as error:return self.reply(HTTPStatus.BAD_REQUEST,{"error":str(error)})
+   if not spec or not spec.get("enabled"):return self.reply(HTTPStatus.NOT_FOUND,{"error":"contact catalog is not enabled"})
+   target=contacts.paths(root)
+   if path=="/api/contacts/publish":
+    try:value=contacts.publish(root.name,self.username())
+    except (OSError,ValueError,json.JSONDecodeError) as error:return self.reply(HTTPStatus.CONFLICT,{"error":str(error)})
+    return self.reply(HTTPStatus.OK,{"status":"published","published_at":value["published_at"],"count":len(value["contacts"])})
+   state=payload(target["state"],{});cooldown=max(3600,int(spec["min_interval_seconds"]));elapsed=elapsed_since(state.get("started_at"))
+   if elapsed is not None and elapsed<cooldown:return self.reply(HTTPStatus.TOO_MANY_REQUESTS,{"error":"cooldown","retry_after_seconds":max(1,round(cooldown-elapsed))})
+   if not reserve_lock(target["lock"]):return self.reply(HTTPStatus.CONFLICT,{"error":"already running"})
+   started=datetime.now(timezone.utc).astimezone().isoformat(timespec="seconds");running={"schema_version":1,"region_id":root.name,"status":"running","started_at":started,"min_interval_seconds":cooldown}
+   if state.get("published_at"):running["published_at"]=state["published_at"]
+   write_payload(target["state"],running)
+   try:
+    log_path=target["base"]/"collection.log";fd=os.open(log_path,os.O_WRONLY|os.O_CREAT|os.O_TRUNC,0o600)
+    if os.name!="nt":os.chmod(log_path,0o600)
+    with os.fdopen(fd,"wb") as log:process=subprocess.Popen([sys.executable,str(ROOT/"pipeline_core/contacts.py"),"--region",root.name,"--reserved-lock"],cwd=ROOT,start_new_session=True,stdout=log,stderr=subprocess.STDOUT)
+    target["lock"].write_text(str(process.pid),encoding="ascii")
+   except BaseException as error:
+    running|={"status":"failed","finished_at":datetime.now(timezone.utc).astimezone().isoformat(timespec="seconds"),"error":str(error)};write_payload(target["state"],running);target["lock"].unlink(missing_ok=True);return self.reply(HTTPStatus.INTERNAL_SERVER_ERROR,{"error":"failed to start contact collection"})
+   return self.reply(HTTPStatus.ACCEPTED,{"status":"accepted","region_id":root.name})
   if path!="/api/regeneration":return self.reply(HTTPStatus.NOT_FOUND,{"error":"not found"})
   root,state_path=self.api_region()
   if not root:return self.reply(HTTPStatus.BAD_REQUEST,{"error":"invalid region"})

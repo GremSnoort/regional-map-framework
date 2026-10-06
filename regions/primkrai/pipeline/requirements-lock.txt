@@ -1,0 +1,9 @@
+osmium==4.3.1
+shapely==2.1.2
+pyproj==3.7.2
+numpy==2.3.3
+certifi==2026.7.22
+requests==2.32.5
+charset-normalizer==3.4.3
+idna==3.10
+urllib3==1.26.20

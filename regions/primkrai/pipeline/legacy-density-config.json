@@ -1,0 +1,31 @@
+{
+  "schema_version": 1,
+  "region_id": "primkrai",
+  "pbf": "sources/cache/far-eastern-fed-district-latest.osm.pbf",
+  "priority_output": "expansion_priority.geojson",
+  "output": "settlement_density.geojson",
+  "osm_snapshot_date": "2026-09-08",
+  "protect_configured_boundaries": true,
+  "protect_configured_grid_cells": true,
+  "settlement_boundaries": {
+    "Владивосток": {"osm_area_type": "relation", "osm_area_id": 1704857},
+    "Артём": {"osm_area_type": "relation", "osm_area_id": 2071804},
+    "Находка": {"osm_area_type": "relation", "osm_area_id": 7373939},
+    "Уссурийск": {"osm_area_type": "way", "osm_area_id": 55668530},
+    "Арсеньев": {"osm_area_type": "relation", "osm_area_id": 1647182},
+    "Большой Камень": {"osm_area_type": "relation", "osm_area_id": 6039852},
+    "Дальнереченск": {"osm_area_type": "relation", "osm_area_id": 1651582},
+    "Спасск-Дальний": {"osm_area_type": "relation", "osm_area_id": 1723641},
+    "Фокино": {"osm_area_type": "relation", "osm_area_id": 9938648},
+    "Лесозаводск": {"osm_area_type": "relation", "osm_area_id": 13431922},
+    "Партизанск": {"osm_area_type": "way", "osm_area_id": 70729559},
+    "Дальнегорск": {"osm_area_type": "way", "osm_area_id": 92832692}
+  },
+  "adaptive_rules": [
+    {"minimum_population": 100000, "grid_metres": 500, "radius_km": 15},
+    {"minimum_population": 25000, "grid_metres": 250, "radius_km": 10},
+    {"minimum_population": 10000, "grid_metres": 200, "radius_km": 7},
+    {"minimum_population": 5000, "grid_metres": 150, "radius_km": 5},
+    {"minimum_population": 2500, "grid_metres": 100, "radius_km": 3.5}
+  ]
+}

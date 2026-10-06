@@ -21,6 +21,9 @@ __pycache__/
 regions/*/data
 regions/*/sources/*
 !regions/*/sources/README.md
+regions/*/review/
+regions/*/contacts/seeds/*
+!regions/*/contacts/seeds/README.md
 regions/*/pipeline/cache/
 regions/*/pipeline/outputs/
 regions/*/pipeline/inputs.lock.json

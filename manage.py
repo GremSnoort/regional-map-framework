@@ -12,6 +12,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import urllib.parse
 from datetime import datetime, timezone
 from pathlib import Path
 
@@ -26,18 +27,18 @@ CORE_LOCK = ROOT / "core.lock.json"
 CORE_VERSION = "2.1.0"
 GEOMETRY_TYPES = {"Point", "MultiPoint", "LineString", "MultiLineString", "Polygon", "MultiPolygon"}
 CORE_FILES = (
-    "index.html", "map.html", "manage.py", "serve.py", "auth.py", "REGION_CONTRACT.md", "DEPLOYMENT.md",
-    "core/gallery.js", "core/gallery.css", "core/map.js", "core/map.css",
+    "index.html", "map.html", "contacts.html", "manage.py", "serve.py", "auth.py", "REGION_CONTRACT.md", "CONTACTS.md", "DEPLOYMENT.md",
+    "core/gallery.js", "core/gallery.css", "core/map.js", "core/map.css", "core/contacts.js", "core/contacts.css",
     ".github/workflows/validate.yml", ".github/workflows/deploy.yml",
     "deploy/regional-map-framework.env.example", "deploy/systemd/regional-map-framework.service", "deploy/nginx/regional-map-framework.conf",
     "deploy/server/rmf-deploy", "deploy/server/rmf-deploy-gateway",
-    "pipeline_core/runner.py", "pipeline_core/regeneration.py", "pipeline_core/build_roads.py", "pipeline_core/build_adaptive_density.py", "pipeline_core/normalize_layer.py",
+    "pipeline_core/runner.py", "pipeline_core/regeneration.py", "pipeline_core/contacts.py", "pipeline_core/build_roads.py", "pipeline_core/build_adaptive_density.py", "pipeline_core/normalize_layer.py",
     "pipeline_core/requirements-lock.txt", "pipeline_core/requirements-minimal-lock.txt",
     "pipeline_core/selftest.py", "schemas/deployment-bundle.schema.json", "schemas/registry.schema.json", "schemas/region.schema.json", "schemas/pipeline.schema.json",
-    "schemas/analytics-plugin.schema.json", "schemas/regeneration.schema.json",
+    "schemas/analytics-plugin.schema.json", "schemas/regeneration.schema.json", "schemas/contacts-sources.schema.json", "schemas/contact-catalog.schema.json",
     "templates/layer.example.json", "templates/region.example.json",
     "templates/standard_layer.example.json", "templates/analytics-plugin.example.json",
-    "templates/adaptive-density.example.json", "templates/regeneration.example.json",
+    "templates/adaptive-density.example.json", "templates/regeneration.example.json", "templates/contacts-sources.example.json", "templates/contacts-seed.example.json",
 )
 
 
@@ -255,6 +256,70 @@ def validate_regeneration(root: Path, config: dict) -> int:
     return len(outputs)
 
 
+def validate_contacts(root: Path, config: dict) -> dict | None:
+    path = root / "contacts" / "sources.json"
+    if not path.is_file():
+        return None
+    spec = read_json(path)
+    required = {"schema_version", "region_id", "enabled", "min_interval_seconds", "request_delay_seconds", "sources"}
+    if set(spec) != required:
+        raise ValueError(f"Contact source fields differ from schema: missing={sorted(required-set(spec))}, unexpected={sorted(set(spec)-required)}")
+    if spec.get("schema_version") != 1 or spec.get("region_id") != config["region_id"] or not isinstance(spec.get("enabled"), bool):
+        raise ValueError("Invalid contact source identity or enabled flag")
+    if not isinstance(spec.get("min_interval_seconds"), int) or isinstance(spec["min_interval_seconds"], bool) or spec["min_interval_seconds"] < 3600:
+        raise ValueError("Contact collection interval must be an integer >= 3600")
+    delay = spec.get("request_delay_seconds")
+    if not isinstance(delay, (int, float)) or isinstance(delay, bool) or not 1 <= delay <= 60:
+        raise ValueError("Contact request delay must be between 1 and 60 seconds")
+    sources = spec.get("sources")
+    if not isinstance(sources, list) or (spec["enabled"] and not sources):
+        raise ValueError("Enabled contact collection requires at least one source")
+    identifiers = set()
+    common = {"source_id", "type"}
+    allowed_by_type = {
+        "local_json": common | {"path"},
+        "remote_json": common | {"url", "allowed_hosts", "contacts_key"},
+        "website": common | {"name", "kind", "coverage", "specializations", "addresses", "urls", "allowed_hosts", "respect_robots_txt", "request_delay_seconds"},
+    }
+    for source in sources:
+        if not isinstance(source, dict) or not isinstance(source.get("source_id"), str):
+            raise ValueError("Every contact source must be an object with source_id")
+        source_id = safe_id(source["source_id"], "contact source_id")
+        if source_id in identifiers: raise ValueError(f"Duplicate contact source_id: {source_id}")
+        identifiers.add(source_id); kind = source.get("type")
+        if kind not in allowed_by_type or set(source) - allowed_by_type[kind]:
+            raise ValueError(f"Contact source {source_id} has unsupported type or fields")
+        if kind == "local_json":
+            relative = Path(source.get("path", ""))
+            if relative.is_absolute() or not relative.parts or relative.parts[0] != "contacts" or ".." in relative.parts or relative.suffix.lower() != ".json":
+                raise ValueError(f"Contact source {source_id} has an unsafe local path")
+            local = root / relative
+            if local.is_symlink() or not local.is_file(): raise ValueError(f"Contact source {source_id} local JSON file is missing or unsafe")
+        else:
+            urls = source.get("urls") if kind == "website" else [source.get("url")]
+            hosts = source.get("allowed_hosts")
+            if not isinstance(urls, list) or not urls or len(urls) != len(set(urls)) or not all(isinstance(item, str) and item.startswith("https://") for item in urls):
+                raise ValueError(f"Contact source {source_id} requires unique HTTPS URLs")
+            if not isinstance(hosts, list) or not hosts or len(hosts) != len(set(hosts)) or not all(isinstance(item, str) and re.fullmatch(r"[a-z0-9.-]+", item) for item in hosts):
+                raise ValueError(f"Contact source {source_id} requires explicit allowed_hosts")
+            allowed = {item.lower().rstrip(".") for item in hosts}
+            for value in urls:
+                try: host = urllib.parse.urlsplit(value).hostname
+                except ValueError: host = None
+                if not host or host.lower().rstrip(".") not in allowed:
+                    raise ValueError(f"Contact source {source_id} URL host is not allowlisted")
+        if kind == "remote_json" and "contacts_key" in source and (not isinstance(source["contacts_key"], str) or not source["contacts_key"]):
+            raise ValueError(f"Remote JSON source {source_id}.contacts_key must be a non-empty string")
+        if kind == "website":
+            if not isinstance(source.get("name"), str) or not source["name"].strip(): raise ValueError(f"Website source {source_id} requires name")
+            if source.get("kind", "other") not in {"agency", "realtor", "broker", "developer", "property_manager", "other"}: raise ValueError(f"Website source {source_id} has invalid kind")
+            for field in ("coverage", "specializations", "addresses"):
+                if field in source and (not isinstance(source[field], list) or not all(isinstance(item, str) and item.strip() for item in source[field])): raise ValueError(f"Website source {source_id}.{field} must be an array of strings")
+            if "respect_robots_txt" in source and not isinstance(source["respect_robots_txt"], bool): raise ValueError(f"Website source {source_id}.respect_robots_txt must be boolean")
+            if "request_delay_seconds" in source and (not isinstance(source["request_delay_seconds"], (int, float)) or isinstance(source["request_delay_seconds"], bool) or not 1 <= source["request_delay_seconds"] <= 60): raise ValueError(f"Website source {source_id} request delay is invalid")
+    return spec
+
+
 def valid_coordinates(value) -> bool:
     if isinstance(value, list) and len(value) >= 2 and all(isinstance(item, (int, float)) and not isinstance(item, bool) for item in value[:2]):
         return -180 <= value[0] <= 180 and -90 <= value[1] <= 90
@@ -340,7 +405,7 @@ def validate_provenance(root: Path, config: dict, records: dict, require: bool) 
 
 
 def inspect_region(region_id: str, allow_missing: bool = False, require_provenance: bool = True, emit: bool = True) -> dict:
-    root = region_dir(region_id); config = read_json(root / "region.json"); validate_config(config, region_id); validate_regeneration(root, config)
+    root = region_dir(region_id); config = read_json(root / "region.json"); validate_config(config, region_id); validate_regeneration(root, config); validate_contacts(root, config)
     counts, records, missing = layer_records(root, config)
     if missing and not allow_missing:
         raise ValueError(f"Missing data files: {missing}. Attach data or build the pipeline first.")
@@ -564,7 +629,7 @@ def deployment_check() -> None:
 
 def deployment_contract_paths(root: Path) -> list[Path]:
     paths = [root / "region.json", root / "SOURCES.md"]
-    for directory in (root / "sources", root / "pipeline"):
+    for directory in (root / "sources", root / "pipeline", root / "contacts"):
         if directory.is_symlink():
             raise ValueError(f"Deployment contract directory must not be a symlink: {directory}")
     source_readme = root / "sources" / "README.md"
@@ -575,6 +640,13 @@ def deployment_contract_paths(root: Path) -> list[Path]:
             relative = path.relative_to(pipeline)
             if any(part in {"cache", "outputs", "__pycache__"} for part in relative.parts) or path.suffix in {".pyc", ".pyo"}: continue
             if path.is_symlink(): raise ValueError(f"Deployment contract must not contain symlinks: {path}")
+            if path.is_file(): paths.append(path)
+    contacts = root / "contacts"
+    if contacts.is_dir():
+        for path in contacts.rglob("*"):
+            relative = path.relative_to(contacts)
+            if any(part in {"__pycache__", ".runtime"} for part in relative.parts) or path.suffix in {".pyc", ".pyo"}: continue
+            if path.is_symlink(): raise ValueError(f"Deployment contact contract must not contain symlinks: {path}")
             if path.is_file(): paths.append(path)
     for path in paths:
         if path.is_symlink() or not path.is_file():
@@ -686,7 +758,7 @@ def verify_deployment_bundle(bundle: Path, data_root: Path | None = None) -> Non
 
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument("command", choices=("init-region", "add-layer", "attach-data", "accept-data", "detach-data", "build", "sync", "validate", "validate-all", "deployment-check", "bundle-build", "bundle-verify", "doctor", "promote", "self-test", "verify-core", "auth-set-user", "auth-delete-user", "auth-list-users")); parser.add_argument("region", nargs="?")
+    parser.add_argument("command", choices=("init-region", "add-layer", "attach-data", "accept-data", "detach-data", "build", "sync", "validate", "validate-all", "deployment-check", "bundle-build", "bundle-verify", "doctor", "promote", "self-test", "verify-core", "auth-set-user", "auth-delete-user", "auth-list-users", "contacts-collect", "contacts-publish", "contacts-status")); parser.add_argument("region", nargs="?")
     parser.add_argument("--title"); parser.add_argument("--center-lat", type=float); parser.add_argument("--center-lon", type=float); parser.add_argument("--data-mode", choices=("external", "pipeline"), default="external")
     parser.add_argument("--layer-id"); parser.add_argument("--file"); parser.add_argument("--label"); parser.add_argument("--geometry", action="append", default=[]); parser.add_argument("--renderer", choices=("auto", "points", "lines", "polygons", "choropleth", "density", "ranking"), default="auto"); parser.add_argument("--required", action="store_true")
     parser.add_argument("--data-dir", type=Path); parser.add_argument("--attach-mode", choices=("symlink", "junction", "copy"), default="symlink"); parser.add_argument("--allow-missing-data", action="store_true"); parser.add_argument("--write-core-lock", action="store_true"); parser.add_argument("--bundle-dir", type=Path)
@@ -701,6 +773,15 @@ def main() -> None:
         if args.command == "auth-set-user": auth.set_user_prompt(args.region)
         else: auth.delete_user(args.region)
         return
+    if args.command in {"contacts-collect", "contacts-publish", "contacts-status"}:
+        if not args.region: parser.error("region is required")
+        from pipeline_core import contacts
+        if args.command == "contacts-collect": result = contacts.collect(args.region)
+        elif args.command == "contacts-publish": result = contacts.publish(args.region, "console-admin")
+        else:
+            root = region_dir(args.region); target = contacts.paths(root)
+            result = read_json(target["state"]) if target["state"].is_file() else {"status": "never"}
+        print(json.dumps(result, ensure_ascii=False, indent=2)); return
     if args.command == "self-test": subprocess.run([sys.executable, str(ROOT / "pipeline_core" / "selftest.py")], check=True); return
     if args.command == "validate-all": validate_all(args.allow_missing_data); return
     if args.command == "deployment-check": deployment_check(); return

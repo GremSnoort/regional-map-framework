@@ -9,18 +9,23 @@
     },
     "map.html": {
       "path": "map.html",
-      "bytes": 3000,
-      "sha256": "c81f293dbda6db5d8e86a4ba181b0c98db9ecd94bfc93d0154ee54ddf188fb88"
+      "bytes": 3106,
+      "sha256": "ed1abe11482eaa2380d79a8523ab200c568ff5958d31d101dbe05e15b3cd3c0b"
+    },
+    "contacts.html": {
+      "path": "contacts.html",
+      "bytes": 3737,
+      "sha256": "86a1e92b23757cd89a3d82122dffe463151f3bd89371e113ba77bc1fd7d16035"
     },
     "manage.py": {
       "path": "manage.py",
-      "bytes": 49829,
-      "sha256": "d83ec369f8fb294f6c049ec7965a7d65edc8cd2ef0ebc88fb9422e28492ff835"
+      "bytes": 56619,
+      "sha256": "3c9b105390378cf0a2bbe191d92c7d6535e28046cfe06aadc561b81f94af327b"
     },
     "serve.py": {
       "path": "serve.py",
-      "bytes": 17650,
-      "sha256": "536710ee57a4bf9fb9a5566b8005ee3a29ae9977d2eda7df20a58bd682edc680"
+      "bytes": 22553,
+      "sha256": "e5e0f87e406df2520d948a2054416c055c13507a30d52e9a715f212f3192c9b2"
     },
     "auth.py": {
       "path": "auth.py",
@@ -29,13 +34,18 @@
     },
     "REGION_CONTRACT.md": {
       "path": "REGION_CONTRACT.md",
-      "bytes": 12224,
-      "sha256": "03ed043ace647120b1f36154324bc4d4d5333d555e2eeb559fb2e7c1f0622419"
+      "bytes": 12954,
+      "sha256": "e22b7942a5d2b38ccd72881f57da8efe23dd89f444f5178724e31e81cb39f1c3"
+    },
+    "CONTACTS.md": {
+      "path": "CONTACTS.md",
+      "bytes": 6418,
+      "sha256": "c89ec7f081508ff394f63c7bead63afbd10bc393a906d5f1b34774d7f14846ea"
     },
     "DEPLOYMENT.md": {
       "path": "DEPLOYMENT.md",
-      "bytes": 14671,
-      "sha256": "9ba8e48411f1e5b83a31ac172309e0d55efbec6e6bf51e12cebbb1d47c7e085b"
+      "bytes": 15353,
+      "sha256": "bd45e61c2a5a46369210458b2d167c70ed191461c679aa28c8a5a39903a4e3b6"
     },
     "core/gallery.js": {
       "path": "core/gallery.js",
@@ -49,28 +59,38 @@
     },
     "core/map.js": {
       "path": "core/map.js",
-      "bytes": 28746,
-      "sha256": "e8086855e8ac015586c7f854cef5262343cfbb83ed4c133f4505be1e5dbfbd6e"
+      "bytes": 30610,
+      "sha256": "82e55c9d3f130ce2da8cdfc4ba936afe8db88c70e321c103ef293d06da8c3499"
     },
     "core/map.css": {
       "path": "core/map.css",
-      "bytes": 11180,
-      "sha256": "6229933961f41ea3f431bbbbb0a120dbeb24adc7b69b5eea95490f681c1ac2e3"
+      "bytes": 12146,
+      "sha256": "bfa901622def5322d311d117d82033992427e50d7617d70a9614cef971826582"
+    },
+    "core/contacts.js": {
+      "path": "core/contacts.js",
+      "bytes": 12850,
+      "sha256": "4b17629d65f0ca7c2d895db5c7fae1328b7668663d0160113c798b39f0766d9e"
+    },
+    "core/contacts.css": {
+      "path": "core/contacts.css",
+      "bytes": 5868,
+      "sha256": "99beea07c5fe70d181981185d073ae4f2184fd74adef8729aa471ecb84626be8"
     },
     ".github/workflows/validate.yml": {
       "path": ".github/workflows/validate.yml",
-      "bytes": 642,
-      "sha256": "8cd51b0944fd0cd4c9e7800f28f224f337af3de625b07834730a4f8398d93f85"
+      "bytes": 685,
+      "sha256": "8ce68100584823d4f527d998f291ab266c072ad46000d9c63f056c07fe7cf5b6"
     },
     ".github/workflows/deploy.yml": {
       "path": ".github/workflows/deploy.yml",
-      "bytes": 2353,
-      "sha256": "90d023c30e8d311aacae84e21bf175b5d5b60c9a60f122c552b8e1a58c22441b"
+      "bytes": 2396,
+      "sha256": "203dbcaeffea5ed561ed2c998dee92fb96123dcb109a5acf2addcf9ae7c19c1e"
     },
     "deploy/regional-map-framework.env.example": {
       "path": "deploy/regional-map-framework.env.example",
-      "bytes": 645,
-      "sha256": "d437855c808dcfbe6fc51c0d381bc06622870e3b04c138822d3cc7516cde9d26"
+      "bytes": 850,
+      "sha256": "abb97cf652d182e4ca07efd4165df60aa8d19492832d142db03c939f0e6530e6"
     },
     "deploy/systemd/regional-map-framework.service": {
       "path": "deploy/systemd/regional-map-framework.service",
@@ -101,6 +121,11 @@
       "path": "pipeline_core/regeneration.py",
       "bytes": 5330,
       "sha256": "b7aebeb763b7089d291e2f97d53c5b6b3eed13d9632b94cb046c960ffd062ea3"
+    },
+    "pipeline_core/contacts.py": {
+      "path": "pipeline_core/contacts.py",
+      "bytes": 23848,
+      "sha256": "aa84578936dc6daad66d33c2525d22b987a252b7dca58f8b2246b2ea1955b48e"
     },
     "pipeline_core/build_roads.py": {
       "path": "pipeline_core/build_roads.py",
@@ -162,6 +187,16 @@
       "bytes": 1070,
       "sha256": "284b6a9f91f57ffcdc75684fefbd3c2ce7e31e8d998d915efaf4c039b25071a5"
     },
+    "schemas/contacts-sources.schema.json": {
+      "path": "schemas/contacts-sources.schema.json",
+      "bytes": 2981,
+      "sha256": "dff9361c72d812d328dbb20ff831913243079f10441f8d79d73b2a89ad68ddd2"
+    },
+    "schemas/contact-catalog.schema.json": {
+      "path": "schemas/contact-catalog.schema.json",
+      "bytes": 1878,
+      "sha256": "73b71ccc23891cccdbdf30fd75784434b1442780eb7749dc727be0ef65f70cbc"
+    },
     "templates/layer.example.json": {
       "path": "templates/layer.example.json",
       "bytes": 1322,
@@ -191,6 +226,16 @@
       "path": "templates/regeneration.example.json",
       "bytes": 290,
       "sha256": "54aa959cf46d2bd742c8d295a98a91c97ac05ac0ed76bf58f124f40a5a75e6fe"
+    },
+    "templates/contacts-sources.example.json": {
+      "path": "templates/contacts-sources.example.json",
+      "bytes": 582,
+      "sha256": "eefed074f13638de7d55ec7758ee9c5f079cfed2e893db3e6297286fadc8db00"
+    },
+    "templates/contacts-seed.example.json": {
+      "path": "templates/contacts-seed.example.json",
+      "bytes": 552,
+      "sha256": "2175921d2e3a7ff6c95309a318e0e8bf7946151fdb71729f4fb67d502438f1db"
     }
   }
 }

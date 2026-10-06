@@ -1,0 +1,126 @@
+{
+  "audit_date": "2026-10-05",
+  "legacy_source": "GAB/X5Group/analytical_maps/primkrai",
+  "legacy_input_verification": [
+    {
+      "path": "pipeline/build_base_layers.py",
+      "bytes": 20096,
+      "sha256": "c7c4bbc8198ccb918ae31951b41ab10fdd8c3e0e8c8d3b0be4e14e68c5977e1d",
+      "matches_legacy_lock": true
+    },
+    {
+      "path": "pipeline/pipeline.json",
+      "bytes": 1246,
+      "sha256": "c83fb1c3ddf9a40ab5c6146e20761ed1a0fe95b8496da2560b31fb4ed40b9ba6",
+      "matches_legacy_lock": true
+    },
+    {
+      "path": "pipeline/priority_config.json",
+      "bytes": 460,
+      "sha256": "7bdf72ecf9fac43b9b78fd99f3f951355aacc4fac229c0d92f37d77539f7fe8d",
+      "matches_legacy_lock": true
+    },
+    {
+      "path": "pipeline/requirements-lock.txt",
+      "bytes": 29,
+      "sha256": "c13fbbe2f9110cd64d625ffbb1ae322f2cbaafba3f93f0b63f15c7449bd7b997",
+      "matches_legacy_lock": true
+    },
+    {
+      "path": "pipeline/settlement_density_config.json",
+      "bytes": 1729,
+      "sha256": "a101074dac5fb72eb8fe247c841da4f696de9c448788cb987b64f3451e5f6197",
+      "matches_legacy_lock": true
+    },
+    {
+      "path": "sources/cache/far-eastern-fed-district-latest.osm.pbf",
+      "bytes": 386594004,
+      "sha256": "bfbb636129a80262090f1468c5073da443c2c4c7014423c55efc6e9a38e708dd",
+      "matches_legacy_lock": true
+    },
+    {
+      "path": "sources/pyaterochka_5dfo_snapshot.html",
+      "bytes": 458226,
+      "sha256": "ddfddcb673a095ce959948c91f36d3fcffece44482b922de51cd7f7d2289eb9c",
+      "matches_legacy_lock": true
+    },
+    {
+      "path": "sources/rosstat_municipal_population_2025.xlsx",
+      "bytes": 1117186,
+      "sha256": "96ec196a9d03c94762f7ded05fd5126217073c4a7029a4b2a3c23038cbf3258d",
+      "matches_legacy_lock": true
+    },
+    {
+      "path": "sources/rosstat_vpn2020_table5.xlsx",
+      "bytes": 1658676,
+      "sha256": "0b232b3d2ab5daa231568acc719ac6fda4fb0979a01a0da6bacc69be6f252474",
+      "matches_legacy_lock": true
+    }
+  ],
+  "regional_snapshots": [
+    {
+      "path": "sources/baseline/expansion_priority.geojson",
+      "bytes": 99077,
+      "sha256": "f9e354c59e232d0e1d3e6020fa39ee93e97c9cbd2a64a9f0f895cf1024d3e347"
+    },
+    {
+      "path": "sources/baseline/federal_roads.geojson",
+      "bytes": 297682,
+      "sha256": "0202bdb02b7f31ef369d1dd94f630370a39198b5e641cb041b78c99846dcc52e"
+    },
+    {
+      "path": "sources/baseline/major_roads.geojson",
+      "bytes": 2943769,
+      "sha256": "9e3feafb7bba037074b8e555212926acae02a6c39a6ab1dc6078bfd2ee35077e"
+    },
+    {
+      "path": "sources/baseline/municipalities.geojson",
+      "bytes": 3450362,
+      "sha256": "36fae05c7963055bf66106d2e8f8e81e0aea6806cf0bd147fd30821b54d97aa8"
+    },
+    {
+      "path": "sources/baseline/settlement_density.geojson",
+      "bytes": 15246224,
+      "sha256": "f0389460c2d8efcc73f6bc0148fcaecafc9be99fa9c768a3b9a537a974c839d6"
+    },
+    {
+      "path": "sources/baseline/settlements.geojson",
+      "bytes": 293830,
+      "sha256": "bc6faf292504f53a31a8055fea194b9aa0d36d75493d956b726a9d2e1472b5f5"
+    },
+    {
+      "path": "sources/baseline/stores.geojson",
+      "bytes": 96782,
+      "sha256": "f6c4d24f99ac0e12f46f62ea6939e999bd45e2836f693642298ca0664644cb42"
+    },
+    {
+      "path": "sources/osm-cache/osm-boundaries.json",
+      "bytes": 241656,
+      "sha256": "ac245254d461642eadb090ef2a657ba1e19d966ac1c61d5d2715149752777edf"
+    },
+    {
+      "path": "sources/osm-cache/osm-buildings.geojson",
+      "bytes": 137106988,
+      "sha256": "c0c8aa257099db9a9156ba71f22967503d33d74fd39afdd1a1e838ff52866b7e"
+    },
+    {
+      "path": "sources/osm-cache/osm-extraction.json",
+      "bytes": 9349,
+      "sha256": "1f4fe731694fdb24e4a1255db695a90a1c9696c6704ca3c1dd98bde9b67817ad"
+    },
+    {
+      "path": "sources/rosstat_municipal_population_2025.xlsx",
+      "bytes": 1117186,
+      "sha256": "96ec196a9d03c94762f7ded05fd5126217073c4a7029a4b2a3c23038cbf3258d"
+    },
+    {
+      "path": "sources/rosstat_vpn2020_table5.xlsx",
+      "bytes": 1658676,
+      "sha256": "0b232b3d2ab5daa231568acc719ac6fda4fb0979a01a0da6bacc69be6f252474"
+    }
+  ],
+  "active_policy": "LEGACY_ONLY_OFFLINE",
+  "legacy_snapshot_manifest": "sources/legacy-snapshot-manifest.json",
+  "derived_manifest": "sources/local-derived-manifest.json",
+  "legacy_folder_runtime_dependency": false
+}

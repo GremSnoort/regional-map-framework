@@ -16,6 +16,7 @@ const base=`regions/${regionId}`;
 const config=await fetch(`${base}/region.json`).then(response=>response.ok?response.json():Promise.reject(new Error(`region.json: HTTP ${response.status}`)));
 document.title=config.page_title;
 document.getElementById('mobile-map-title').textContent=config.title;
+document.getElementById('contacts-link').href=`/contacts.html?region=${encodeURIComponent(regionId)}`;
 document.getElementById('title').innerHTML=`<h1>${esc(config.title)}</h1>${config.lifecycle==='draft'?'<p class="bad"><b>Черновик:</b> пакет ещё не прошёл production-проверку.</p>':''}<p>${esc(config.subtitle||'')}</p>`;
 document.getElementById('sources').textContent=config.source_note||'Источники не описаны.';
 fetch('/api/session',{cache:'no-store'}).then(response=>response.ok?response.json():null).then(session=>{if(session)document.getElementById('session-user').textContent=session.username});
@@ -102,6 +103,15 @@ function focusFeature(feature,state){
   if(bounds.isValid())map.fitBounds(bounds,{padding:[35,35],maxZoom:Number(state.spec.table?.max_zoom||16),animate:false});
   setTimeout(()=>state.layer.eachLayer(layer=>{if(layer.feature===feature)layer.openPopup()}),80);
 }
+function downloadTableText(panel,state){
+  const cellText=cell=>cell.textContent.trim().replace(/[\t\r\n]+/g,' ');
+  const lines=[...panel.querySelectorAll('table tr')].map(row=>[...row.querySelectorAll('th,td')].map(cellText).join('\t'));
+  const now=new Date();
+  const text=[state.spec.table.title||state.spec.label,`Регион: ${config.title}`,`Дата выгрузки: ${now.toLocaleString('ru-RU')}`,'',...lines,'',config.source_note||''].join('\r\n')+'\r\n';
+  const url=URL.createObjectURL(new Blob(['\ufeff',text],{type:'text/plain;charset=utf-8'}));
+  const link=document.createElement('a');link.href=url;link.download=`${regionId}-${state.id}-${now.toISOString().slice(0,10)}.txt`;
+  try{document.body.appendChild(link);link.click()}finally{link.remove();setTimeout(()=>URL.revokeObjectURL(url),30000)}
+}
 function buildTable(state,tableIndex){
   const options=state.spec.table;if(!options?.enabled)return;
   let features=[...(state.data.features||[])];
@@ -112,6 +122,8 @@ function buildTable(state,tableIndex){
   state.tablePanel=panel;state.tableFeatures=features;
   const closedTop=`${180+tableIndex*46}px`,toggle=panel.querySelector('.data-panel-toggle'),close=panel.querySelector('.data-panel-close'),body=panel.querySelector('tbody'),setOpen=open=>{if(open)document.querySelectorAll('.data-panel.open').forEach(other=>{if(other!==panel){other.classList.remove('open');other.style.top=other.dataset.closedTop;other.querySelector('.data-panel-toggle')?.setAttribute('aria-expanded','false')}});panel.classList.toggle('open',open);panel.style.top=open?'16px':closedTop;toggle.setAttribute('aria-expanded',String(open));if(open)map.closePopup()};panel.dataset.closedTop=closedTop;
   toggle.addEventListener('click',()=>setOpen(!panel.classList.contains('open')));close.addEventListener('click',()=>setOpen(false));
+  const download=document.createElement('button');download.className='data-panel-download';download.type='button';download.textContent='Скачать .txt';download.setAttribute('aria-label','Скачать содержимое таблицы в текстовый файл');download.addEventListener('click',()=>downloadTableText(panel,state));
+  const actions=document.createElement('div');actions.className='data-panel-actions';close.before(actions);actions.append(download,close);
   features.forEach((feature,index)=>{const row=document.createElement('tr');row.tabIndex=0;row.setAttribute('role','button');row.innerHTML=`<td data-label="&#8470;">${index+1}</td>${(options.columns||[]).map(column=>`<td data-label="${esc(column.label||column.field)}">${column.bold?'<b>':''}${esc(format(valueAt(feature.properties||{},column.field),column.type))}${esc(column.suffix||'')}${column.bold?'</b>':''}</td>`).join('')}`;const focus=()=>{setOpen(false);focusFeature(feature,state)};row.addEventListener('click',focus);row.addEventListener('keydown',event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();focus()}});body.appendChild(row)});
 }
 runtime.filter(state=>state.spec.table?.enabled).forEach(buildTable);
@@ -270,7 +282,14 @@ function setupMobileUi(){
     const sourcesText=document.createElement('div');
     sourcesText.textContent=config.source_note||'Источники не описаны.';
     sources.append(sourcesTitle,sourcesText);
-    sheetBody.replaceChildren(summary,layerStatus,sources);
+    const contacts=document.createElement('section');
+    contacts.className='mobile-info-section';
+    const contactsLink=document.createElement('a');
+    contactsLink.className='mobile-contacts-link';
+    contactsLink.href=`/contacts.html?region=${encodeURIComponent(regionId)}`;
+    contactsLink.textContent='Открыть каталог партнёров и источников объектов';
+    contacts.appendChild(contactsLink);
+    sheetBody.replaceChildren(summary,layerStatus,sources,contacts);
     if(!regeneration.hidden){
       regeneration.classList.add('mobile-embedded');
       sheetBody.appendChild(regeneration);

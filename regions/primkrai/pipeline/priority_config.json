@@ -1,0 +1,19 @@
+{
+  "central_latitude": 43.7,
+  "minimum_population": 2500,
+  "base_people_per_store": 5000,
+  "scenario_people_per_store": {
+    "low": 10000,
+    "high": 2500
+  },
+  "store_fallback_radius_km": 1.0,
+  "below_base_score_cap": 59,
+  "roads": [
+    "major_roads.geojson",
+    "federal_roads.geojson"
+  ],
+  "output": "expansion_priority.geojson",
+  "build_date": "2026-10-05",
+  "model_version": "shared-expansion-2.0",
+  "method_source_url": "https://www.kommersant.ru/doc/4060798"
+}
