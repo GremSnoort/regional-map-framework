@@ -410,7 +410,10 @@ def inspect_region(region_id: str, allow_missing: bool = False, require_provenan
     if missing and not allow_missing:
         raise ValueError(f"Missing data files: {missing}. Attach data or build the pipeline first.")
     expected = config.get("expected") or {}
-    differences = {key: {"expected": value, "actual": counts.get(key)} for key, value in expected.items() if counts.get(key) != value}
+    # A code-only checkout has no datasets. In allow-missing mode compare
+    # counts only for available layers, retaining strict checks for unknown IDs.
+    differences = {key: {"expected": value, "actual": counts.get(key)} for key, value in expected.items()
+                   if (key in counts or not (allow_missing and key in config["layers"])) and counts.get(key) != value}
     if differences:
         raise ValueError(f"Layer counts differ: {differences}")
     empty = [layer_id for layer_id, spec in config["layers"].items() if spec.get("required_for_production") and counts.get(layer_id, 0) == 0]

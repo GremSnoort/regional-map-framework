@@ -19,8 +19,8 @@
     },
     "manage.py": {
       "path": "manage.py",
-      "bytes": 56619,
-      "sha256": "3c9b105390378cf0a2bbe191d92c7d6535e28046cfe06aadc561b81f94af327b"
+      "bytes": 56864,
+      "sha256": "1986c36fd59ba0cccb1b674afe105a32a4a1f510d0c42781b3821d79a7c90e84"
     },
     "serve.py": {
       "path": "serve.py",

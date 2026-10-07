@@ -137,6 +137,60 @@ class FrameworkTest(unittest.TestCase):
                 with self.assertRaisesRegex(ValueError, "directory must not be a symlink"):
                     manage.deployment_contract_paths(region)
 
+    def test_allow_missing_data_checks_only_available_layer_counts(self):
+        with tempfile.TemporaryDirectory() as directory:
+            temporary = Path(directory)
+            registry = temporary / "registry.json"
+            registry.write_text('{"schema_version":1,"default_region":null,"regions":[]}', encoding="utf-8")
+            with patch.object(manage, "REGIONS", temporary / "regions"), patch.object(manage, "REGISTRY", registry):
+                manage.init_region("demo", "Demo", 55.75, 37.62, "external")
+                for layer in ("objects", "missing"):
+                    manage.add_layer("demo", layer, f"{layer}.geojson", layer, ["Point"], "points", True)
+                root = temporary / "regions/demo"
+                config = manage.read_json(root / "region.json")
+                config["expected"] = {"objects": 1, "missing": 2}
+                manage.atomic_json(root / "region.json", config)
+                manage.validate_all(True)
+                with self.assertRaisesRegex(ValueError, "Missing data files"):
+                    manage.inspect_region("demo", emit=False)
+                payload = {"type": "FeatureCollection", "features": [{"type": "Feature", "geometry": {"type": "Point", "coordinates": [37.62, 55.75]}, "properties": {"name": "demo"}}]}
+                manage.atomic_json(root / "data/objects.geojson", payload)
+                result = manage.inspect_region("demo", allow_missing=True, require_provenance=False, emit=False)
+                self.assertEqual(result["layers"], {"objects": 1})
+                self.assertEqual(result["missing"], ["data/missing.geojson"])
+                config["expected"]["objects"] = 2
+                manage.atomic_json(root / "region.json", config)
+                with self.assertRaisesRegex(ValueError, "Layer counts differ"):
+                    manage.validate_all(True)
+                config["expected"]["objects"] = 0
+                manage.atomic_json(root / "data/objects.geojson", {"type": "FeatureCollection", "features": []})
+                manage.atomic_json(root / "region.json", config)
+                self.assertEqual(manage.inspect_region("demo", allow_missing=True, require_provenance=False, emit=False)["layers"], {"objects": 0})
+                config["expected"]["objects"] = 1
+                manage.atomic_json(root / "region.json", config)
+                with self.assertRaisesRegex(ValueError, "Layer counts differ"):
+                    manage.validate_all(True)
+
+    def test_allow_missing_data_keeps_production_and_expected_ids_strict(self):
+        with tempfile.TemporaryDirectory() as directory:
+            temporary = Path(directory)
+            registry = temporary / "registry.json"
+            registry.write_text('{"schema_version":1,"default_region":null,"regions":[]}', encoding="utf-8")
+            with patch.object(manage, "REGIONS", temporary / "regions"), patch.object(manage, "REGISTRY", registry):
+                manage.init_region("demo", "Demo", 55.75, 37.62, "external")
+                manage.add_layer("demo", "objects", "objects.geojson", "Objects", ["Point"], "points", True)
+                root = temporary / "regions/demo"
+                config = manage.read_json(root / "region.json")
+                config["expected"] = {"objects": 1, "unknown": 1}
+                manage.atomic_json(root / "region.json", config)
+                with self.assertRaisesRegex(ValueError, "Layer counts differ"):
+                    manage.validate_all(True)
+                del config["expected"]["unknown"]
+                config["lifecycle"] = "production"
+                manage.atomic_json(root / "region.json", config)
+                with self.assertRaisesRegex(ValueError, "Production package is incomplete"):
+                    manage.validate_all(True)
+
     def test_region_can_attach_external_data(self):
         with tempfile.TemporaryDirectory() as directory:
             temporary = Path(directory)
