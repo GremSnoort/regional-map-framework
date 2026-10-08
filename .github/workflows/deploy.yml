@@ -30,6 +30,7 @@ jobs:
       - run: python manage.py self-test
       - run: python manage.py verify-core
       - run: python manage.py validate-all --allow-missing-data
+      - run: node --check core/table-export.js
       - run: node --check core/map.js
 
   deploy:

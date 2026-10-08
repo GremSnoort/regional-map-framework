@@ -101,7 +101,7 @@ def public_file(request_path):
  try:path=unquote(request_path,errors="strict")
  except (UnicodeDecodeError,UnicodeEncodeError):return None
  if "\0" in path or "\\" in path or "//" in path:return None
- fixed={"/":"index.html","/index.html":"index.html","/map.html":"map.html","/contacts.html":"contacts.html","/core/gallery.js":"core/gallery.js","/core/gallery.css":"core/gallery.css","/core/map.js":"core/map.js","/core/map.css":"core/map.css","/core/contacts.js":"core/contacts.js","/core/contacts.css":"core/contacts.css"}
+ fixed={"/":"index.html","/index.html":"index.html","/map.html":"map.html","/contacts.html":"contacts.html","/core/gallery.js":"core/gallery.js","/core/gallery.css":"core/gallery.css","/core/map.js":"core/map.js","/core/map.css":"core/map.css","/core/table-export.js":"core/table-export.js","/core/contacts.js":"core/contacts.js","/core/contacts.css":"core/contacts.css"}
  if path=="/registry.json":
   root=content_root();candidate=root/"registry.json"
   try:resolved=candidate.resolve(strict=True);safe_root=root.resolve(strict=True)

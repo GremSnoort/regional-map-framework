@@ -1,4 +1,5 @@
 import * as L from 'leaflet';
+import {tableWorkbook} from './table-export.js';
 import {maplibreGL} from 'https://unpkg.com/@maplibre/maplibre-gl-leaflet@0.1.4/dist/leaflet-maplibre-gl.mjs';
 
 const esc=value=>String(value??'').replace(/[&<>"']/g,char=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[char]));
@@ -103,13 +104,18 @@ function focusFeature(feature,state){
   if(bounds.isValid())map.fitBounds(bounds,{padding:[35,35],maxZoom:Number(state.spec.table?.max_zoom||16),animate:false});
   setTimeout(()=>state.layer.eachLayer(layer=>{if(layer.feature===feature)layer.openPopup()}),80);
 }
-function downloadTableText(panel,state){
-  const cellText=cell=>cell.textContent.trim().replace(/[\t\r\n]+/g,' ');
-  const lines=[...panel.querySelectorAll('table tr')].map(row=>[...row.querySelectorAll('th,td')].map(cellText).join('\t'));
+function downloadTableExcel(state){
+  const options=state.spec.table,columns=options.columns||[];
+  const rows=state.tableFeatures.map((feature,index)=>[index+1,...columns.map(column=>{
+    const value=valueAt(feature.properties||{},column.field);
+    if(value===null||value===undefined)return null;
+    if(column.type==='number'||column.type==='decimal'){const number=Number(value);return Number.isFinite(number)?number:null}
+    return String(value);
+  })]);
   const now=new Date();
-  const text=[state.spec.table.title||state.spec.label,`Регион: ${config.title}`,`Дата выгрузки: ${now.toLocaleString('ru-RU')}`,'',...lines,'',config.source_note||''].join('\r\n')+'\r\n';
-  const url=URL.createObjectURL(new Blob(['\ufeff',text],{type:'text/plain;charset=utf-8'}));
-  const link=document.createElement('a');link.href=url;link.download=`${regionId}-${state.id}-${now.toISOString().slice(0,10)}.txt`;
+  const workbook=tableWorkbook({headers:['№',...columns.map(column=>(column.label||column.field)+(column.suffix?` (${column.suffix.trim()})`:''))],rows,formats:['number',...columns.map(column=>column.type)],metadata:[['Таблица',options.title||state.spec.label],['Регион',config.title],['Дата выгрузки',now.toLocaleString('ru-RU')],['Количество строк',rows.length],['Источники и ограничения',config.source_note||'']]});
+  const url=URL.createObjectURL(workbook);
+  const link=document.createElement('a');link.href=url;link.download=`${regionId}-${state.id}-${now.getFullYear()}-${String(now.getMonth()+1).padStart(2,'0')}-${String(now.getDate()).padStart(2,'0')}.xlsx`;
   try{document.body.appendChild(link);link.click()}finally{link.remove();setTimeout(()=>URL.revokeObjectURL(url),30000)}
 }
 function buildTable(state,tableIndex){
@@ -122,7 +128,7 @@ function buildTable(state,tableIndex){
   state.tablePanel=panel;state.tableFeatures=features;
   const closedTop=`${180+tableIndex*46}px`,toggle=panel.querySelector('.data-panel-toggle'),close=panel.querySelector('.data-panel-close'),body=panel.querySelector('tbody'),setOpen=open=>{if(open)document.querySelectorAll('.data-panel.open').forEach(other=>{if(other!==panel){other.classList.remove('open');other.style.top=other.dataset.closedTop;other.querySelector('.data-panel-toggle')?.setAttribute('aria-expanded','false')}});panel.classList.toggle('open',open);panel.style.top=open?'16px':closedTop;toggle.setAttribute('aria-expanded',String(open));if(open)map.closePopup()};panel.dataset.closedTop=closedTop;
   toggle.addEventListener('click',()=>setOpen(!panel.classList.contains('open')));close.addEventListener('click',()=>setOpen(false));
-  const download=document.createElement('button');download.className='data-panel-download';download.type='button';download.textContent='Скачать .txt';download.setAttribute('aria-label','Скачать содержимое таблицы в текстовый файл');download.addEventListener('click',()=>downloadTableText(panel,state));
+  const download=document.createElement('button');download.className='data-panel-download';download.type='button';download.textContent='Скачать Excel';download.setAttribute('aria-label','Скачать содержимое таблицы в файл Excel');download.addEventListener('click',()=>{try{downloadTableExcel(state)}catch(error){console.error('Excel export failed',error);window.alert(`Не удалось создать Excel-файл. ${error.message||'Попробуйте ещё раз.'}`)}});
   const actions=document.createElement('div');actions.className='data-panel-actions';close.before(actions);actions.append(download,close);
   features.forEach((feature,index)=>{const row=document.createElement('tr');row.tabIndex=0;row.setAttribute('role','button');row.innerHTML=`<td data-label="&#8470;">${index+1}</td>${(options.columns||[]).map(column=>`<td data-label="${esc(column.label||column.field)}">${column.bold?'<b>':''}${esc(format(valueAt(feature.properties||{},column.field),column.type))}${esc(column.suffix||'')}${column.bold?'</b>':''}</td>`).join('')}`;const focus=()=>{setOpen(false);focusFeature(feature,state)};row.addEventListener('click',focus);row.addEventListener('keydown',event=>{if(event.key==='Enter'||event.key===' '){event.preventDefault();focus()}});body.appendChild(row)});
 }

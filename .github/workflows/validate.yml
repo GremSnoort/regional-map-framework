@@ -19,4 +19,5 @@ jobs:
       - run: python manage.py validate-all --allow-missing-data
       - run: node --check core/gallery.js
       - run: node --check core/contacts.js
+      - run: node --check core/table-export.js
       - run: node --check core/map.js

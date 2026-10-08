@@ -19,13 +19,13 @@
     },
     "manage.py": {
       "path": "manage.py",
-      "bytes": 56864,
-      "sha256": "1986c36fd59ba0cccb1b674afe105a32a4a1f510d0c42781b3821d79a7c90e84"
+      "bytes": 56888,
+      "sha256": "025d94b6cb2df3ef9d76762808aa160a23e539a1fb15c347eed655b5de8c50bc"
     },
     "serve.py": {
       "path": "serve.py",
-      "bytes": 22553,
-      "sha256": "e5e0f87e406df2520d948a2054416c055c13507a30d52e9a715f212f3192c9b2"
+      "bytes": 22600,
+      "sha256": "de8820211ddb36a4c60c9a983ee15310093fd37dc647b2c2382d2e2d22bcbfd4"
     },
     "auth.py": {
       "path": "auth.py",
@@ -59,13 +59,18 @@
     },
     "core/map.js": {
       "path": "core/map.js",
-      "bytes": 30610,
-      "sha256": "82e55c9d3f130ce2da8cdfc4ba936afe8db88c70e321c103ef293d06da8c3499"
+      "bytes": 31347,
+      "sha256": "1c3730b894fe629d1f1a19564a19bd8f365fea6282324852019bfab16c5b322f"
     },
     "core/map.css": {
       "path": "core/map.css",
       "bytes": 12146,
       "sha256": "bfa901622def5322d311d117d82033992427e50d7617d70a9614cef971826582"
+    },
+    "core/table-export.js": {
+      "path": "core/table-export.js",
+      "bytes": 7842,
+      "sha256": "d1b6d116af52fedf448bc8762dba41072d29fd482e1c9a14f7b1700257f62190"
     },
     "core/contacts.js": {
       "path": "core/contacts.js",
@@ -79,13 +84,13 @@
     },
     ".github/workflows/validate.yml": {
       "path": ".github/workflows/validate.yml",
-      "bytes": 685,
-      "sha256": "8ce68100584823d4f527d998f291ab266c072ad46000d9c63f056c07fe7cf5b6"
+      "bytes": 732,
+      "sha256": "edc2ed2184275554040b5bad08d5234ce921bfb3c4b0eb69387e14f2abc260a8"
     },
     ".github/workflows/deploy.yml": {
       "path": ".github/workflows/deploy.yml",
-      "bytes": 2396,
-      "sha256": "203dbcaeffea5ed561ed2c998dee92fb96123dcb109a5acf2addcf9ae7c19c1e"
+      "bytes": 2443,
+      "sha256": "8f7fcb48f65c1bcdd613ecb4907fc266c156ec8079fa11abdce07009eea1bff9"
     },
     "deploy/regional-map-framework.env.example": {
       "path": "deploy/regional-map-framework.env.example",

@@ -392,6 +392,7 @@ class FrameworkTest(unittest.TestCase):
             (project / "core/gallery.css").write_text("gallery css", encoding="utf-8")
             (project / "core/map.js").write_text("map", encoding="utf-8")
             (project / "core/map.css").write_text("css", encoding="utf-8")
+            (project / "core/table-export.js").write_text("export module", encoding="utf-8")
             (project / "core/contacts.js").write_text("contacts", encoding="utf-8")
             (project / "core/contacts.css").write_text("contacts css", encoding="utf-8")
             registered = ["demo"]
@@ -449,7 +450,7 @@ class FrameworkTest(unittest.TestCase):
                     self.assertEqual(login.code, 303)
                     cookie = login.headers["Set-Cookie"].split(";", 1)[0]
 
-                    allowed = ["/", "/index.html", "/map.html", "/contacts.html", "/core/gallery.js", "/core/gallery.css", "/core/map.js", "/core/map.css", "/core/contacts.js", "/core/contacts.css", "/registry.json", "/regions/demo/region.json", "/regions/demo/data/objects.geojson"]
+                    allowed = ["/", "/index.html", "/map.html", "/contacts.html", "/core/gallery.js", "/core/gallery.css", "/core/map.js", "/core/map.css", "/core/table-export.js", "/core/contacts.js", "/core/contacts.css", "/registry.json", "/regions/demo/region.json", "/regions/demo/data/objects.geojson"]
                     if os.name != "nt":
                         allowed.extend(["/regions/linked/region.json", "/regions/linked/data/objects.geojson"])
                     for path in allowed:
